@@ -1,8 +1,10 @@
 .DS_Store
 node_modules
 docs/examples.json
-css/*.min.css
-docs/fonts
+docs/css/*.min.css
+docs/css/*.map
+docs/font
 docs/lib
+docs/inscoreEditor.js
 src/lib
 
