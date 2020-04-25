@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html;charset=utf-8" >
+	<link rel="shortcut icon" type="image/x-icon" href="imgs/favicon.ico" />
+
+	<link rel="stylesheet" href="font/stylesheet.css" type="text/css" />
+	<link rel="stylesheet" href="css/bootstrap.min.css">
+	<link rel="stylesheet" href="css/codemirror.min.css" type="text/css" media="screen" />
+	<link rel="stylesheet" href="css/inscore.min.css" type="text/css" media="screen" />
+	<link rel="stylesheet" href="css/print.css" type="text/css" media="print" />
+
+	<script src="lib/extern.min.js"></script>
+
+	<title>INScore JS Editor</title>
+</head>
+
+<body>
+
+<div class="grid-container" id="container">
+  <div class="header">
+
+	<nav class="navbar navbar-inverse">
+	  <div class="container-fluid">
+		<div class="navbar-header">
+		  <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#myNavbar">
+			<span class="icon-bar"></span>
+			<span class="icon-bar"></span>
+			<span class="icon-bar"></span>                        
+		  </button>
+		  <a class="navbar-brand" href="#">INScore JS Editor</a>
+		</div>
+	    <div class="collapse navbar-collapse" id="myNavbar">
+		<ul class="nav navbar-nav">
+		  <li class="dropdown">
+			<a class="dropdown-toggle" data-toggle="dropdown" href="#">Save<span class="caret"></span></a>
+			<ul class="dropdown-menu">
+				<li><a href="#" id="savegmn">as INScore script</a></li>
+				<li><a href="#" id="savehtml">as HTML page</a></li>
+			</ul>
+		  </li>
+
+		  <li class="dropdown">
+			<a class="dropdown-toggle" data-toggle="dropdown" href="#" aria-haspopup="true" aria-expanded="false">Examples <span class="caret"></span></a>
+    		<ul class="dropdown-menu multi-level" role="menu" aria-labelledby="dropdownMenu" id="tab-examples">
+			</ul>
+		</li>
+		<li><a href="https://inscore.grame.fr/doc/html/" target=_blank>Documentation</a></li>
+		</ul>
+	  </div>
+	  </div>
+	</nav>
+  </div>
+
+  <div class="left well">
+	  <ul class="nav nav-tabs">
+		<li class="active"><a data-toggle="tab" href="#editor">Editor</a></li>
+		<li><a data-toggle="tab" href="#ilogs">INScore logs</a></li>
+		<li><a data-toggle="tab" href="#about">About</a></li>
+	  </ul>
+	  <div class="tab-content">
+		<div id="editor" class="tab-pane fade in active">
+			<textarea id="code">
+/ITL/scene/* del;
+
+grey = 180 180 180;
+shadow = shadow 5 5 $grey 75 3;
+color = 20 0 150;
+
+/ITL/scene/welcome set txt "Welcome to INScore-JS";
+/ITL/scene/welcome color $color;
+/ITL/scene/welcome fontSize 32;
+/ITL/scene/welcome fontWeight bold;
+/ITL/scene/welcome effect $shadow;
+/ITL/scene/welcome y -0.7;
+
+/ITL/scene/version set txt "Version" $(/ITL get version);
+/ITL/scene/version fontSize 14;
+/ITL/scene/version y -0.55;
+
+/ITL/scene/what set html '<div style="text-align: center">An environment for the design of
+<br />interactive, augmented music scores.</div>';
+/ITL/scene/what y -0.34;
+/ITL/scene/what fontSize 18;
+
+/ITL/scene/score set gmn "[ a f# g ]";
+/ITL/scene/score effect $shadow;
+/ITL/scene/score scale 1.2;
+/ITL/scene/score y -0.05;
+
+/ITL/scene/comment set html '<div style="text-align: center">
+INScore is an open source project developed by GRAME.<br />
+More information on <br />
+<a href=https://inscore.grame.fr style="font-size: 110%" target=_blank>inscore.grame.fr</a></span>';
+/ITL/scene/comment y 0.28;
+
+/ITL/scene/logo set img "imgs/grame.png";
+/ITL/scene/logo scale 0.55;
+/ITL/scene/logo y 0.6;
+							</textarea>
+			<div class="toolbar-left">
+				<span id=inscore-name></span>
+				<button id="run" type="button" class="btn btn-success" style="float: right">Run</button>
+			</div>
+		</div>
+
+		<div id="ilogs" class="tab-pane fade">
+			<h3>INScore Logs</h3>
+			<pre id=logs></pre>
+			<div class="toolbar">
+				<button id="clear-log" type="button" class="btn btn-success">Clear</button>
+				&nbsp; <input type="checkbox" id="logwrap"> Wrap lines
+			</div>
+		</div>
+
+		<div id="about" class="tab-pane fade about">
+		</div>
+	  </div>
+  </div>  
+
+  <div class="right well">
+	  <ul class="nav nav-tabs noprint">
+		<li class="active"><a data-toggle="tab" href="#score">Score</a></li>
+		<li><a data-toggle="tab" href="#prefs">Editor Preferences</a></li>
+	  </ul>
+	  <div class="tab-content">
+		<div id="score" class="tab-pane fade in active"> 
+			<div class="inscore" id="scene"></div>
+			<div class="toolbar noprint">
+				<button id="reset" type="button" class="btn btn-success">Reset</button>
+			</div>
+		</div>
+		<div id="prefs" class="tab-pane fade noprint">
+			<h3>Editor preferences</h3>
+		  <table>
+		  <tr class="prefs-table"><td>Font Family</td><td>
+		  <select class="form-control" id="font-family">
+			  <option>Lucida</option>
+			  <option>Monaco</option>
+			  <option selected>Andale Mono</option>
+			  <option>Courier</option>
+			  <option>Courier New</option>
+		  </select></td></tr>
+		  <tr class="prefs-table"><td>Font Size</td><td>
+		  <select class="form-control" id="font-size">
+			  <option>10</option>
+			  <option selected>12</option>
+			  <option>14</option>
+			  <option>16</option>
+			  <option>18</option>
+			  <option>24</option>
+		  </select></td></tr>
+		  <tr class="prefs-table"><td>Editor Theme</td><td>
+		  <select class="form-control" id="etheme">
+			  <option>default</option>
+			  <option>abcdef</option>
+			  <option>ambiance</option>
+			  <option>bespin</option>
+			  <option>blackboard</option>
+			  <option>cobalt</option>
+			  <option>colorforth</option>
+			  <option>dracula</option>
+			  <option>duotone-dark</option>
+			  <option>duotone-light</option>
+			  <option>eclipse</option>
+			  <option>elegant</option>
+			  <option>erlang-dark</option>
+			  <option>hopscotch</option>
+			  <option>icecoder</option>
+			  <option>isotope</option>
+			  <option>lesser-dark</option>
+			  <option>liquibyte</option>
+			  <option>material</option>
+			  <option>mbo</option>
+			  <option>mdn-like</option>
+			  <option>midnight</option>
+			  <option>monokai</option>
+			  <option>neat</option>
+			  <option>neo</option>
+			  <option>night</option>
+			  <option>panda-syntax</option>
+			  <option>paraiso-dark</option>
+			  <option>paraiso-light</option>
+			  <option>pastel-on-dark</option>
+			  <option>railscasts</option>
+			  <option>rubyblue</option>
+			  <option>seti</option>
+			  <option>solarized</option>
+			  <option>the-matrix</option>
+			  <option>tomorrow-night-bright</option>
+			  <option>tomorrow-night-eighties</option>
+			  <option>ttcn</option>
+			  <option>twilight</option>
+			  <option>vibrant-ink</option>
+			  <option>xq-dark</option>
+			  <option>xq-light</option>
+			  <option>yeti</option>
+			  <option>zenburn</option>
+		  </select></td></tr>
+		  <tr class="prefs-table"><td>Wrap lines</td><td><input type="checkbox" id="wraplines" checked></td></tr>
+		  </table>
+  
+		  </div>
+		  </div>
+	  </div>
+  </div>
+
+  <div class="footer">
+	  <a href="https://inscore.grame.fr" target=_blank>INScore Project</a> - Copyright 2020 &copy; 
+	  <a href="https://www.grame.fr" target=_blank>Grame-CNCM</a>
+  </div>
+</div>
+
+<script src="lib/libINScore.js"></script>
+<script src="lib/libGUIDOEngine.js"></script>
+<script src="lib/libmusicxml.js"></script>
+<script src="lib/inscoreview.js"></script>
+<script src="inscoreEditor.js"></script>
+
+</body>
+</html>

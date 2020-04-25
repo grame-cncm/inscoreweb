@@ -1,0 +1,7 @@
+INScore JS Editor History
+
+
+----------------------------------------------------------------
+version 0.1
+- first version
+

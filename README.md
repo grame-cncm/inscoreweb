@@ -1,2 +1,3 @@
-# inscoreweb
-INScore JS online editor
+
+# Welcome to the INScore JS Online Editor
+
