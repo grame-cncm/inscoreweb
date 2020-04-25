@@ -2,7 +2,7 @@
 /ITL/scene/* del;
 
 /ITL/scene/score set gmnf "gmn/mozart.gmn.txt";
-/ITL/scene/score scale 0.4;
+/ITL/scene/score scale 0.6;
 /ITL/scene/score watch mouseDown (/ITL/scene/cursor* date '$date');
 
 w = 0.1;
