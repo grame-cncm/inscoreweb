@@ -1,6 +1,9 @@
 
 ///<reference path="inscoreBase.ts"/>
 ///<reference path="editor.ts"/>
+///<reference path="TLog.ts"/>
+
+
 
 //----------------------------------------------------------------------------
 // a download function
@@ -16,33 +19,35 @@ function download (filename : string, text: string) : void {
 	document.body.removeChild(element);
 }
 
+
+//----------------------------------------------------------------------------
+// log support
+//----------------------------------------------------------------------------
+class inscoreLog extends TLog {
+	log  (msg: string): void {
+		document.getElementById("logs").textContent += msg + "\n";
+	}
+
+	error(msg: string): void {
+		document.getElementById("logs").textContent += msg + "\n";
+	}
+
+}
+
+
 //----------------------------------------------------------------------------
 // a simple glue to inscore engine
 //----------------------------------------------------------------------------
 class EditorGlue extends INScoreBase {
-	// fEditor : InscoreEditor;
 
-	// initialise () : void {
-	// 	super.initialise();
-	// 	// this.fEditor = new InscoreEditor ("code");
-	// }
+	constructor() {
+		gLog = new inscoreLog();
+		super();
+    }
 
 	loadFromFile (content: string, v2: boolean) : void {
 		editor.setInscore (content, null)
 	}
-
-	// accept (event : DragEvent) : boolean {
-	// 	let items = event.dataTransfer.items;
-	// 	for (let i=0; i< items.length; i++) {
-	// 		switch (items[i].kind) {
-	// 			case "file":
-	// 				break;
-	// 			default:
-	// 				return false;
-	// 		}
-	// 	}
-	// 	return true;
-	// }
 
 	dragEnter (event : DragEvent) : void { 
 		event.stopImmediatePropagation();
