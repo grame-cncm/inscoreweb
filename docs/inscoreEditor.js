@@ -47,6 +47,17 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
+var TLog = /** @class */ (function () {
+    function TLog() {
+    }
+    TLog.prototype.log = function (msg) {
+        console.log(msg);
+    };
+    TLog.prototype.error = function (msg) {
+        console.error(msg);
+    };
+    return TLog;
+}());
 // object types
 var kArcType = "arc";
 var kCurveType = "curve";
@@ -120,6 +131,7 @@ var InscoreEditor = /** @class */ (function () {
         $("#wraplines").change(function (event) { _this.fEditor.setOption("lineWrapping", $("#wraplines").is(":checked")); });
         $("#run").click(function (event) { _this.setInscore(_this.fEditor.getValue()); });
         $("#reset").click(function (event) { inscore.postMessageStr("/ITL/scene", "reset"); });
+        $("#clear-log").click(function (event) { $("#logs").text(""); });
         this.fEditor.getWrapperElement().style.fontFamily = $("#font-family").val();
         this.fEditor.getWrapperElement().style.fontSize = $("#font-size").val() + "px";
         this.fEditor.setOption("theme", $("#etheme").val());
@@ -133,7 +145,7 @@ var InscoreEditor = /** @class */ (function () {
             $("#inscore-name").text(path);
             ext = path.substring(path.lastIndexOf('.') + 1, path.length).toLocaleLowerCase();
         }
-        $("#logs").text(script);
+        // $("#logs").text (script);
         if (ext == "inscore2")
             inscore.loadInscore2("/ITL parse v2;\n" + script);
         else
@@ -399,6 +411,7 @@ var INScoreBase = /** @class */ (function () {
 }());
 ///<reference path="inscoreBase.ts"/>
 ///<reference path="editor.ts"/>
+///<reference path="TLog.ts"/>
 //----------------------------------------------------------------------------
 // a download function
 //----------------------------------------------------------------------------
@@ -412,33 +425,35 @@ function download(filename, text) {
     document.body.removeChild(element);
 }
 //----------------------------------------------------------------------------
+// log support
+//----------------------------------------------------------------------------
+var inscoreLog = /** @class */ (function (_super) {
+    __extends(inscoreLog, _super);
+    function inscoreLog() {
+        return _super !== null && _super.apply(this, arguments) || this;
+    }
+    inscoreLog.prototype.log = function (msg) {
+        document.getElementById("logs").textContent += msg + "\n";
+    };
+    inscoreLog.prototype.error = function (msg) {
+        document.getElementById("logs").textContent += msg + "\n";
+    };
+    return inscoreLog;
+}(TLog));
+//----------------------------------------------------------------------------
 // a simple glue to inscore engine
 //----------------------------------------------------------------------------
 var EditorGlue = /** @class */ (function (_super) {
     __extends(EditorGlue, _super);
     function EditorGlue() {
-        return _super !== null && _super.apply(this, arguments) || this;
+        var _this = this;
+        gLog = new inscoreLog();
+        _this = _super.call(this) || this;
+        return _this;
     }
-    // fEditor : InscoreEditor;
-    // initialise () : void {
-    // 	super.initialise();
-    // 	// this.fEditor = new InscoreEditor ("code");
-    // }
     EditorGlue.prototype.loadFromFile = function (content, v2) {
         editor.setInscore(content, null);
     };
-    // accept (event : DragEvent) : boolean {
-    // 	let items = event.dataTransfer.items;
-    // 	for (let i=0; i< items.length; i++) {
-    // 		switch (items[i].kind) {
-    // 			case "file":
-    // 				break;
-    // 			default:
-    // 				return false;
-    // 		}
-    // 	}
-    // 	return true;
-    // }
     EditorGlue.prototype.dragEnter = function (event) {
         event.stopImmediatePropagation();
         event.preventDefault();

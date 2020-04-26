@@ -245,7 +245,7 @@ var JSObjectView = /** @class */ (function () {
         if (infos.updateevents || force)
             this.updateEvents(infos.events, obj.getOSCAddress());
         if (infos.showmap)
-            console.log(this + " show map -> " + obj.getMaps().size());
+            gLog.log(this + " show map -> " + obj.getMaps().size());
     };
     JSObjectView.prototype.updateColor = function (color) {
         this.fElement.style.color = color.rgb;
@@ -938,8 +938,20 @@ var PianoRollLineMode;
     PianoRollLineMode[PianoRollLineMode["kPRAutoLines"] = 0] = "kPRAutoLines";
     PianoRollLineMode[PianoRollLineMode["kPRNoLine"] = -1] = "kPRNoLine";
 })(PianoRollLineMode || (PianoRollLineMode = {}));
+var TLog = /** @class */ (function () {
+    function TLog() {
+    }
+    TLog.prototype.log = function (msg) {
+        console.log(msg);
+    };
+    TLog.prototype.error = function (msg) {
+        console.error(msg);
+    };
+    return TLog;
+}());
 ///<reference path="JSSVGBase.ts"/>
 ///<reference path="guidoengine.ts"/>
+///<reference path="TLog.ts"/>
 var JSGMNView = /** @class */ (function (_super) {
     __extends(JSGMNView, _super);
     function JSGMNView(parent, guido) {
@@ -1011,7 +1023,7 @@ var JSGMNView = /** @class */ (function (_super) {
             return true;
         }
         else
-            console.error(obj.getOSCAddress() + " failed to parse gmn code.");
+            gLog.error(obj.getOSCAddress() + " failed to parse gmn code.");
         return false;
     };
     JSGMNView.prototype.updateSpecial = function (obj, oid) {
@@ -1019,7 +1031,7 @@ var JSGMNView = /** @class */ (function (_super) {
         if (this.fGuido)
             return this.gmn2svg(obj, guido.code, guido.page);
         else
-            console.log("Guido engine not available");
+            gLog.log("Guido engine is not available");
         return false;
     };
     // this method is called by the model to update the map synchronously
@@ -1411,7 +1423,7 @@ var JSPianoRollView = /** @class */ (function (_super) {
             }
         }
         else
-            console.log("Guido engine not available");
+            gLog.log("Guido engine is not available");
         return false;
     };
     return JSPianoRollView;
@@ -1721,6 +1733,7 @@ var libmusicxml = /** @class */ (function () {
 }());
 ///<reference path="JSGMNView.ts"/>
 ///<reference path="libmusicxml.ts"/>
+///<reference path="TLog.ts"/>
 var JSXMLView = /** @class */ (function (_super) {
     __extends(JSXMLView, _super);
     function JSXMLView(parent, xmllib, guido) {
@@ -1739,7 +1752,7 @@ var JSXMLView = /** @class */ (function (_super) {
             return content.length ? this.gmn2svg(obj, content, xml.page) : false;
         }
         else
-            console.log("libMusicXML not available");
+            gLog.log("libMusicXML is not available");
         return false;
     };
     return JSXMLView;
@@ -1876,6 +1889,7 @@ var TSyncManager = /** @class */ (function () {
 }());
 ///<reference path="guidoengine.ts"/>
 ///<reference path="libmusicxml.ts"/>
+///<reference path="TLog.ts"/>
 //----------------------------------------------------------------------------
 var libraries = /** @class */ (function () {
     function libraries() {
@@ -1896,7 +1910,7 @@ var libraries = /** @class */ (function () {
             return __generator(this, function (_a) {
                 return [2 /*return*/, new Promise(function (success, failure) {
                         _this.fGuido.initialise().then(function () {
-                            console.log("GuidoEngine version " + _this.fGuido.getFloatVersion());
+                            gLog.log("GuidoEngine version " + _this.fGuido.getFloatVersion());
                             success(_this);
                         }, function () { _this.fGuido = null; success(_this); });
                     })];
@@ -1909,7 +1923,7 @@ var libraries = /** @class */ (function () {
             return __generator(this, function (_a) {
                 return [2 /*return*/, new Promise(function (success, failure) {
                         _this.fXMLLib.initialise().then(function () {
-                            console.log("libMusicXML version " + _this.fXMLLib.libVersionStr());
+                            gLog.log("libMusicXML version " + _this.fXMLLib.libVersionStr());
                             success(_this);
                         }, function () { _this.fXMLLib = null; success(_this); });
                     })];
@@ -1945,6 +1959,7 @@ var inscorelibs = new libraries();
 ///<reference path="JSSVGfView.ts"/>
 ///<reference path="JSVideoView.ts"/>
 ///<reference path="TSyncManager.ts"/>
+///<reference path="TLog.ts"/>
 ///<reference path="libraries.ts"/>
 //----------------------------------------------------------------------------
 var JSViewFactory = /** @class */ (function () {
@@ -2034,10 +2049,10 @@ var JSViewFactory = /** @class */ (function () {
             case "memimg":
             case "sig":
             case "signode":
-                console.log("JSViewFactory::create pending type " + type + " parent id: " + parent);
+                gLog.log("Type " + type + " is not yet supported");
                 break;
             default:
-                console.error("JSViewFactory::create unknown type " + type + " parent id: " + parent);
+                gLog.error("JSViewFactory::create unknown type " + type);
         }
         if (view) {
             view.setSyncManager(new TSyncManager(view));
@@ -2050,13 +2065,13 @@ var JSViewFactory = /** @class */ (function () {
 var inscorefactory = new JSViewFactory();
 ///<reference path="inscore.ts"/>
 ///<reference path="libraries.ts"/>
+///<reference path="TLog.ts"/>
 //----------------------------------------------------------------------------
 var INScoreGlue = /** @class */ (function () {
     function INScoreGlue() {
         this.fTimeTask = 0;
         this.fSorterTask = 0;
         this.fInscore = new INScore;
-        // this.fInscore.initialise ().then (() => { this.start(); });
     }
     //------------------------------------------------------------------------
     // initialization
@@ -2081,3 +2096,4 @@ var INScoreGlue = /** @class */ (function () {
     return INScoreGlue;
 }());
 var gGlue = new INScoreGlue();
+var gLog = new TLog();
