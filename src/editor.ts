@@ -44,6 +44,7 @@ class InscoreEditor {
 		$("#wraplines").change 		( (event) => { this.fEditor.setOption("lineWrapping",  <boolean>$("#wraplines").is(":checked")); } );
 		$("#run").click				( (event) => { this.setInscore(this.fEditor.getValue()); } );
 		$("#reset").click			( (event) => { inscore.postMessageStr("/ITL/scene", "reset"); } );
+		$("#clear-log").click		( (event) => { $("#logs").text (""); } );
 
 		this.fEditor.getWrapperElement().style.fontFamily =  <string>$("#font-family").val();
 		this.fEditor.getWrapperElement().style.fontSize   =  $("#font-size").val() + "px"; 
@@ -58,7 +59,7 @@ class InscoreEditor {
 			$("#inscore-name").text (path);
 			ext = path.substring(path.lastIndexOf('.')+1, path.length).toLocaleLowerCase();
 		}
-		$("#logs").text (script);
+		// $("#logs").text (script);
 		if (ext == "inscore2")
 			inscore.loadInscore2 ("/ITL parse v2;\n" + script);
 		else 
