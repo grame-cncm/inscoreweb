@@ -15,7 +15,8 @@ html, body {
 #code 	{ resize: none; width: 100%; height: calc(100% - 45px); }
 #logs 	{ 
 	margin: 5px 0 0 0; 
-	height: calc(90% - 15px);
+	/* height: calc(90% - 15px); */
+	height: calc(100% - 45px);
 	border-radius: 8px; 
 	background: rgb(243, 243, 240);
 	font-size: 90%;
@@ -30,14 +31,14 @@ html, body {
 
 .toolbar 	{ 
 	text-align: center;
-	padding-top: 3px;
+	padding-top: 10px;
  }
 
  .toolbar-left 	{ 
 	text-align: left;
 	padding-left: 10px;
-	padding-right: 30px;
-	padding-top: 3px;
+	padding-right: 20px;
+	padding-top: 10px;
  }
 
  .prefs-table > td {
