@@ -125,7 +125,7 @@ class INScoreBase {
 
     //------------------------------------------------------------------------
     // load an inscore file - called when an inscore file is dropped
-	loadFromFile (content: string, v2: boolean) : void {
+	loadFromFile (content: string, v2: boolean, name: string) : void {
 		if (v2)
 			inscore.loadInscore2 (content);
 		else
@@ -142,7 +142,7 @@ class INScoreBase {
 	loadInscore(file: File, v2: boolean) : void {
 		let reader = new FileReader();				
 		reader.readAsText (file);
-		reader.onloadend = (event) => { this.loadFromFile (reader.result.toString(), v2)};
+		reader.onloadend = (event) => { this.loadFromFile (reader.result.toString(), v2, file.name)};
 	}
 
 

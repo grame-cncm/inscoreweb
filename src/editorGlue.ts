@@ -45,8 +45,8 @@ class EditorGlue extends INScoreBase {
 		super();
     }
 
-	loadFromFile (content: string, v2: boolean) : void {
-		editor.setInscore (content, null)
+	loadFromFile (content: string, v2: boolean, name: string) : void {
+		editor.setInscore (content, name);
 	}
 
 	dragEnter (event : DragEvent) : void { 

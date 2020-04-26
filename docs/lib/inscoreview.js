@@ -526,7 +526,6 @@ var JSSvgBase = /** @class */ (function (_super) {
         }
     };
     JSSvgBase.prototype.getTranslate = function (pos) {
-        var bb = this.fSVG.getBBox();
         return { x: pos.pen.penWidth, y: pos.pen.penWidth };
     };
     JSSvgBase.prototype.getPos = function (pos) {
@@ -708,6 +707,13 @@ var JSEllipseView = /** @class */ (function (_super) {
     JSEllipseView.prototype.clone = function (parent) { return new JSEllipseView(parent); };
     JSEllipseView.prototype.getSVGTarget = function () { return this.fEllipse; };
     JSEllipseView.prototype.toString = function () { return "JSEllipseView"; };
+    // 	getPos(pos: OPosition) : Point {
+    // 		let ppos = this.getParent().getOrigin();
+    //         let x = ppos.x + this.relative2SceneWidth (pos.x) - (this.getElement().clientWidth * (1 + pos.xorigin * pos.scale) / 2 );
+    // 		let y = ppos.y + this.relative2SceneHeight(pos.y) - (this.getElement().clientHeight * (1 + pos.yorigin * pos.scale) / 2 );
+    // gLog.log(this + ".getPos: " + this.getId() + " -> " + x + " " + y);
+    //         return { x: x, y: y};
+    // 	}
     JSEllipseView.prototype.updateSVGDimensions = function (w, h) {
         var rx = w / 2;
         var ry = h / 2;
@@ -1573,16 +1579,29 @@ var JSSceneView = /** @class */ (function (_super) {
         return _this;
     }
     JSSceneView.prototype.clone = function (parent) { return null; };
-    JSSceneView.prototype.parentWidth = function () { return this.getElement().parentElement.clientWidth; };
-    JSSceneView.prototype.parentHeight = function () { return this.getElement().parentElement.clientHeight; };
-    JSSceneView.prototype.getOrigin = function () {
-        if (this.fAbsolutePos)
-            return _super.prototype.getOrigin.call(this);
-        var div = this.getElement();
-        var x = div.offsetWidth / 2;
-        var y = div.offsetHeight / 2;
-        return { x: x, y: y };
-    };
+    // parentWidth() : number			{ 
+    // 	let p = this.getElement().parentElement; 
+    // 	return Math.min(p.clientWidth, p.clientHeight); 
+    // }
+    // parentHeight() : number			{ 
+    // 	let p = this.getElement().parentElement; 
+    // 	let h = Math.min(p.clientWidth, p.clientHeight); 
+    // 	gLog.log(this + " h: " + h );
+    // 	return h;
+    // }
+    // parentWidth() : number			{ return this.getElement().parentElement.clientWidth; }
+    // parentHeight() : number			{ return this.getElement().parentElement.clientHeight; }
+    // 	getOrigin () : Point { 
+    // 		if (this.fAbsolutePos)
+    // 			return super.getOrigin();
+    // 		let div = this.getElement();
+    // 		// let x = div.offsetWidth / 2;
+    // 		// let y = div.offsetHeight / 2;
+    // 		let x = div.clientWidth / 2;
+    // 		let y = div.clientHeight / 2;
+    // gLog.log(this + ".getOrigin: " + x + " " + y );
+    // 		return  { x: x, y: y};
+    // 	}
     JSSceneView.prototype.getParentOrigin = function () {
         var div = this.getElement().parentElement;
         var r = div.getBoundingClientRect();
