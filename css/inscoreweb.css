@@ -4,7 +4,8 @@ html, body {
 	margin-right : 20px;
 	margin-left : 20px;
 	margin-top : 0px;
-	height: 100%;
+	margin-bottom : 0px;
+	height: 99%;
 }
 
 #about 	{ }
@@ -12,10 +13,11 @@ html, body {
 #ilogs  { }
 #prefs  { margin: 10px; width: calc(100% - 10px); }
 #score  { }
+#preview  { visibility: hidden; opacity: 1; background: white; height: 100%; }
+#fullscore { height: calc(100% - 12px); };
 #code 	{ resize: none; width: 100%; height: calc(100% - 45px); }
 #logs 	{ 
 	margin: 5px 0 0 0; 
-	/* height: calc(90% - 15px); */
 	height: calc(100% - 45px);
 	border-radius: 8px; 
 	background: rgb(243, 243, 240);
@@ -32,7 +34,7 @@ html, body {
 .toolbar 	{ 
 	text-align: center;
 	padding-top: 10px;
- }
+}
 
  .toolbar-left 	{ 
 	text-align: left;

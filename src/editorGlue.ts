@@ -4,22 +4,6 @@
 ///<reference path="TLog.ts"/>
 
 
-
-//----------------------------------------------------------------------------
-// a download function
-//----------------------------------------------------------------------------
-function download (filename : string, text: string) : void {
-	var element = document.createElement('a');
-	element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
-	element.setAttribute('download', filename);
-
-	element.style.display = 'none';
-	document.body.appendChild(element);
-	element.click();
-	document.body.removeChild(element);
-}
-
-
 //----------------------------------------------------------------------------
 // log support
 //----------------------------------------------------------------------------
@@ -43,8 +27,29 @@ class EditorGlue extends INScoreBase {
 	constructor() {
 		gLog = new inscoreLog();
 		super();
+		$("#fullscreen").click		( (event) => { this.loadPreview() }); 
     }
 
+
+	loadScript(div: HTMLElement, script: string) : void {
+		let w = div.clientWidth;
+		let h = div.clientHeight;
+		if (!w || !h)
+			setTimeout (() => this.loadScript (div, script), 50) ;
+		else inscore.loadInscore (script, true);
+	}
+
+	loadPreview() {
+		let div = document.getElementById("fullscore");
+		this.initDiv (div, false);
+		let address = this.getSceneAddress (div);
+		let score = address + " new;\n";
+		score += editor.value.replace (/\/ITL\/scene/g, address);
+		let preview = document.getElementById("preview");
+		preview.style.visibility = "visible";
+		this.loadScript (div, score);
+	}
+	
 	loadFromFile (content: string, v2: boolean, name: string) : void {
 		editor.setInscore (content, name);
 	}

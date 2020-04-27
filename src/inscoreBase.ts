@@ -57,7 +57,7 @@ class INScoreBase {
 		this.fExtHandlers["inscore2"] 		= kInscore2;
 	}
 
-	private getSceneAddress (div: HTMLElement) : string {
+	getSceneAddress (div: HTMLElement) : string {
 		let scene = div.id;
 		return "/ITL/" + (scene ? scene : "scene");
 	}
@@ -101,7 +101,7 @@ class INScoreBase {
     
     //------------------------------------------------------------------------
     // inscore div initialization
-	private initDiv (div: HTMLElement, v2: boolean) : void {
+	initDiv (div: HTMLElement, v2: boolean) : void {
 		// do not post the message otherwise content will be loaded before the scene is created
 		inscore.loadInscore (this.getSceneAddress(div) + " new;", false);	
 		let content = div.innerText;
@@ -238,7 +238,7 @@ class INScoreBase {
 	dragEnter (event : DragEvent) : void	{}
 	dragLeave (event : DragEvent) : void	{}
 	
-	private allowdrop (div : HTMLElement) : void {
+	allowdrop (div : HTMLElement) : void {
 		div.addEventListener ("dragenter", (event : DragEvent) : void => { if (this.accept(event)) this.dragEnter(event); }, true);
 		div.addEventListener ("dragleave", (event : DragEvent) : void => { this.dragLeave(event); }, true);
 		div.addEventListener ("dragover",  (event : DragEvent) : void => { event.preventDefault(); }, true);
