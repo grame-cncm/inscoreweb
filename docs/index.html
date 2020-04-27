@@ -17,6 +17,12 @@
 
 <body>
 
+	<div class="modal fade" id="preview">
+		<div id="fullscore"></div>
+		<button style="float: right;" type="button" class="close" data-dismiss="modal">&times;</button>
+	</div>
+	
+	
 <div class="grid-container" id="container">
   <div class="header">
 
@@ -35,7 +41,7 @@
 		  <li class="dropdown">
 			<a class="dropdown-toggle" data-toggle="dropdown" href="#">Save<span class="caret"></span></a>
 			<ul class="dropdown-menu">
-				<li><a href="#" id="savegmn">as INScore script</a></li>
+				<li><a href="#" id="saveinscore">as INScore script</a></li>
 				<li><a href="#" id="savehtml">as HTML page</a></li>
 			</ul>
 		  </li>
@@ -105,7 +111,6 @@ More information on <br />
 		</div>
 
 		<div id="ilogs" class="tab-pane fade">
-			<!-- <h3>INScore Logs</h3> -->
 			<pre id=logs></pre>
 			<div class="toolbar">
 				<button id="clear-log" type="button" class="btn btn-success">Clear</button>
@@ -118,6 +123,7 @@ More information on <br />
 	  </div>
   </div>  
 
+
   <div class="right well">
 	  <ul class="nav nav-tabs noprint">
 		<li class="active"><a data-toggle="tab" href="#score">Score</a></li>
@@ -128,6 +134,11 @@ More information on <br />
 			<div class="inscore" id="scene"></div>
 			<div class="toolbar noprint">
 				<button id="reset" type="button" class="btn btn-success">Reset</button>
+				<a href="#" data-toggle="modal" data-target="#preview">
+					<button id="fullscreen" type="button" class="btn btn-success">
+						Full screen
+					</button>
+				</a>
 			</div>
 		</div>
 		<div id="prefs" class="tab-pane fade noprint">
@@ -202,8 +213,8 @@ More information on <br />
   
 		  </div>
 		  </div>
-	  </div>
   </div>
+
 
   <div class="footer">
 	  <a href="https://inscore.grame.fr" target=_blank>INScore Project</a> - Copyright 2020 &copy; 
