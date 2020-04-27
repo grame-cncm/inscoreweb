@@ -26,14 +26,13 @@
     "@grame/libmusicxml": "^3.19.1",
     "@types/codemirror": "0.0.91",
     "@types/jquery": "^3.3.35",
+    "@types/jqueryui": "^1.12.10",
     "@types/node": "^13.13.2",
     "bootstrap": "^3.4.0",
     "codemirror": "^5.53.2",
     "css-loader": "^2.1.1",
     "directory-tree": "^2.2.4",
     "jquery": "^3.5.0",
-    "minify": "^5.1.1",
-    "webpack": "^4.43.0",
-    "webpack-cli": "^3.3.11"
+    "minify": "^5.1.1"
   }
 }
