@@ -90,12 +90,26 @@ var kMouseDownID = 3;
 var kMouseUpID = 4;
 var kMouseMoveID = 5;
 var kMouseDClickID = 6;
+//----------------------------------------------------------------------------
+// a download function
+//----------------------------------------------------------------------------
+function download(filename, text) {
+    var element = document.createElement('a');
+    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+    element.setAttribute('download', filename);
+    element.style.display = 'none';
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+}
 ///<reference path="lib/inscore.d.ts"/>
+///<reference path="download.ts"/>
 //----------------------------------------------------------------------------
 // this is the editor part, currently using CodeMirror
 //----------------------------------------------------------------------------
 var InscoreEditor = /** @class */ (function () {
     function InscoreEditor(divID) {
+        this.fFileName = "Untitled";
         this.fEditor = CodeMirror.fromTextArea(document.getElementById(divID), {
             lineNumbers: true,
             // mode: 'inscore',
@@ -132,18 +146,29 @@ var InscoreEditor = /** @class */ (function () {
         $("#run").click(function (event) { _this.setInscore(_this.fEditor.getValue()); });
         $("#reset").click(function (event) { inscore.postMessageStr("/ITL/scene", "reset"); });
         $("#clear-log").click(function (event) { $("#logs").text(""); });
+        $("#saveinscore").click(function (event) { _this.saveInscore(); });
+        $("#savehtml").click(function (event) { _this.saveHtml(); });
         this.fEditor.getWrapperElement().style.fontFamily = $("#font-family").val();
         this.fEditor.getWrapperElement().style.fontSize = $("#font-size").val() + "px";
         this.fEditor.setOption("theme", $("#etheme").val());
         this.fEditor.setOption("lineWrapping", $("#wraplines").is(":checked"));
-        this.setInscore(this.fEditor.getValue(), "Untitled");
+        this.setInscore(this.fEditor.getValue(), this.fFileName);
     };
+    InscoreEditor.prototype.saveInscore = function () { download(this.fFileName + ".inscore", this.fEditor.getValue()); };
+    InscoreEditor.prototype.saveHtml = function () { download(this.fFileName + ".html", document.getElementById("scene").innerHTML); };
     InscoreEditor.prototype.setInscore = function (script, path) {
         if (path === void 0) { path = null; }
         var ext = "inscore";
         if (path) {
             $("#inscore-name").text(path);
-            ext = path.substring(path.lastIndexOf('.') + 1, path.length).toLocaleLowerCase();
+            var n = path.lastIndexOf('.');
+            if (n > 0) {
+                ext = path.substring(path.lastIndexOf('.') + 1, path.length).toLocaleLowerCase();
+                var fullname = path.substring(path.lastIndexOf('/') + 1, path.length);
+                this.fFileName = fullname.substring(0, fullname.lastIndexOf('.'));
+            }
+            else
+                this.fFileName = path;
         }
         // $("#logs").text (script);
         if (ext == "inscore2")
@@ -280,7 +305,7 @@ var INScoreBase = /** @class */ (function () {
     };
     //------------------------------------------------------------------------
     // load an inscore file - called when an inscore file is dropped
-    INScoreBase.prototype.loadFromFile = function (content, v2) {
+    INScoreBase.prototype.loadFromFile = function (content, v2, name) {
         if (v2)
             inscore.loadInscore2(content);
         else
@@ -297,7 +322,7 @@ var INScoreBase = /** @class */ (function () {
         var _this = this;
         var reader = new FileReader();
         reader.readAsText(file);
-        reader.onloadend = function (event) { _this.loadFromFile(reader.result.toString(), v2); };
+        reader.onloadend = function (event) { _this.loadFromFile(reader.result.toString(), v2, file.name); };
     };
     //------------------------------------------------------------------------
     // build a receivable name for an INScore object
@@ -413,18 +438,6 @@ var INScoreBase = /** @class */ (function () {
 ///<reference path="editor.ts"/>
 ///<reference path="TLog.ts"/>
 //----------------------------------------------------------------------------
-// a download function
-//----------------------------------------------------------------------------
-function download(filename, text) {
-    var element = document.createElement('a');
-    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
-    element.setAttribute('download', filename);
-    element.style.display = 'none';
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
-}
-//----------------------------------------------------------------------------
 // log support
 //----------------------------------------------------------------------------
 var inscoreLog = /** @class */ (function (_super) {
@@ -449,10 +462,30 @@ var EditorGlue = /** @class */ (function (_super) {
         var _this = this;
         gLog = new inscoreLog();
         _this = _super.call(this) || this;
+        $("#fullscreen").click(function (event) { _this.loadPreview(); });
         return _this;
     }
-    EditorGlue.prototype.loadFromFile = function (content, v2) {
-        editor.setInscore(content, null);
+    EditorGlue.prototype.loadScript = function (div, script) {
+        var _this = this;
+        var w = div.clientWidth;
+        var h = div.clientHeight;
+        if (!w || !h)
+            setTimeout(function () { return _this.loadScript(div, script); }, 50);
+        else
+            inscore.loadInscore(script, true);
+    };
+    EditorGlue.prototype.loadPreview = function () {
+        var div = document.getElementById("fullscore");
+        this.initDiv(div, false);
+        var address = this.getSceneAddress(div);
+        var score = address + " new;\n";
+        score += editor.value.replace(/\/ITL\/scene/g, address);
+        var preview = document.getElementById("preview");
+        preview.style.visibility = "visible";
+        this.loadScript(div, score);
+    };
+    EditorGlue.prototype.loadFromFile = function (content, v2, name) {
+        editor.setInscore(content, name);
     };
     EditorGlue.prototype.dragEnter = function (event) {
         event.stopImmediatePropagation();
