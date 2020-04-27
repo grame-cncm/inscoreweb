@@ -1,5 +1,6 @@
 
 ///<reference path="lib/inscore.d.ts"/>
+///<reference path="download.ts"/>
 
 //----------------------------------------------------------------------------
 // this is the editor part, currently using CodeMirror
@@ -7,6 +8,7 @@
 class InscoreEditor {
 
 	private fEditor: CodeMirror.EditorFromTextArea;
+	private fFileName = "Untitled";
 
 	constructor (divID: string) {
 		this.fEditor = CodeMirror.fromTextArea (<HTMLTextAreaElement>document.getElementById (divID), {
@@ -45,19 +47,31 @@ class InscoreEditor {
 		$("#run").click				( (event) => { this.setInscore(this.fEditor.getValue()); } );
 		$("#reset").click			( (event) => { inscore.postMessageStr("/ITL/scene", "reset"); } );
 		$("#clear-log").click		( (event) => { $("#logs").text (""); } );
-
+		$("#saveinscore").click		( (event) => { this.saveInscore(); });
+		$("#savehtml").click		( (event) => { this.saveHtml(); });
+		 
 		this.fEditor.getWrapperElement().style.fontFamily =  <string>$("#font-family").val();
 		this.fEditor.getWrapperElement().style.fontSize   =  $("#font-size").val() + "px"; 
 		this.fEditor.setOption("theme", <string>$("#etheme").val());
 		this.fEditor.setOption("lineWrapping",  <boolean>$("#wraplines").is(":checked"));
-		this.setInscore (this.fEditor.getValue(), "Untitled");
+		this.setInscore (this.fEditor.getValue(), this.fFileName);
 	}
+
 	
+	saveInscore () 			{ download (this.fFileName + ".inscore",  this.fEditor.getValue()); }
+	saveHtml () 			{ download (this.fFileName + ".html",  document.getElementById("scene").innerHTML);  }
+
 	setInscore ( script: string, path: string = null): void {
 		let ext = "inscore";
 		if (path) {
 			$("#inscore-name").text (path);
-			ext = path.substring(path.lastIndexOf('.')+1, path.length).toLocaleLowerCase();
+			let n = path.lastIndexOf('.');
+			if (n > 0) {
+				ext = path.substring(path.lastIndexOf('.')+1, path.length).toLocaleLowerCase();
+				let fullname = path.substring(path.lastIndexOf('/')+1, path.length);
+				this.fFileName = fullname.substring(0, fullname.lastIndexOf('.'));
+			}
+			else this.fFileName = path;
 		}
 		// $("#logs").text (script);
 		if (ext == "inscore2")
