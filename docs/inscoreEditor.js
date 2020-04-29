@@ -131,16 +131,26 @@ var InscoreEditor = /** @class */ (function () {
         });
         $("code").show();
     }
+    InscoreEditor.prototype.dragEnter = function (event) {
+        event.stopImmediatePropagation();
+        event.preventDefault();
+        $("#editor").css("opacity", 0.3);
+    };
+    InscoreEditor.prototype.dragLeave = function (event) {
+        event.stopImmediatePropagation();
+        event.preventDefault();
+        $("#editor").css("opacity", 1);
+    };
     InscoreEditor.prototype.initialize = function () {
         var _this = this;
-        this.fEditor.on("dragstart", function (editor, e) { });
-        this.fEditor.on("dragenter", function (editor, e) { $("#editor").css("opacity", 0.3); });
-        this.fEditor.on("dragleave", function (editor, e) { $("#editor").css("opacity", 1); });
+        // this.fEditor.on("dragstart",	(editor: any, e: DragEvent) => {});
+        this.fEditor.on("dragenter", function (editor, e) { _this.dragEnter(e); });
+        this.fEditor.on("dragleave", function (editor, e) { _this.dragLeave(e); });
         this.fEditor.on("drop", function (editor, e) {
-            $("#editor").css("opacity", 1);
+            _this.dragLeave(e);
             var data = e.dataTransfer.getData("text");
             if (!data) {
-                e.stopPropagation();
+                e.stopImmediatePropagation();
                 e.preventDefault();
                 var filelist = e.dataTransfer.files;
                 if (!filelist)
@@ -425,16 +435,23 @@ var INScoreBase = /** @class */ (function () {
     };
     //------------------------------------------------------------------------
     // activate drag & drop on inscore divs
-    INScoreBase.prototype.accept = function (event) { return true; };
-    INScoreBase.prototype.dragEnter = function (event) { };
-    INScoreBase.prototype.dragLeave = function (event) { };
+    INScoreBase.prototype.accept = function (event) { return event.target == event.currentTarget; };
     INScoreBase.prototype.allowdrop = function (div) {
         var _this = this;
         div.addEventListener("dragenter", function (event) { if (_this.accept(event))
             _this.dragEnter(event); }, true);
-        div.addEventListener("dragleave", function (event) { _this.dragLeave(event); }, true);
+        div.addEventListener("dragleave", function (event) { if (_this.accept(event))
+            _this.dragLeave(event); }, true);
         div.addEventListener("dragover", function (event) { event.preventDefault(); }, true);
         div.addEventListener("drop", function (event) { _this.dragLeave(event); _this.drop(event); }, true);
+    };
+    INScoreBase.prototype.dragEnter = function (event) {
+        event.stopImmediatePropagation();
+        event.preventDefault();
+    };
+    INScoreBase.prototype.dragLeave = function (event) {
+        event.stopImmediatePropagation();
+        event.preventDefault();
     };
     //------------------------------------------------------------------------
     // activate drag & drop on inscore divs
@@ -477,6 +494,7 @@ var EditorGlue = /** @class */ (function (_super) {
         gLog = new inscoreLog();
         _this = _super.call(this) || this;
         $("#fullscreen").click(function (event) { _this.loadPreview(); });
+        _this.fKeyHandler = _this.closePreview;
         return _this;
     }
     EditorGlue.prototype.loadScript = function (div, script) {
@@ -490,6 +508,12 @@ var EditorGlue = /** @class */ (function (_super) {
             this.addInscoreDiv(div, 1);
         }
     };
+    EditorGlue.prototype.closePreview = function (event) {
+        if (event.key == 'Escape') {
+            $("#fsclose").click();
+            window.removeEventListener("keydown", this.fKeyHandler, { capture: true });
+        }
+    };
     EditorGlue.prototype.loadPreview = function () {
         var div = document.getElementById("fullscore");
         this.initDiv(div, false);
@@ -499,21 +523,18 @@ var EditorGlue = /** @class */ (function (_super) {
         var preview = document.getElementById("preview");
         preview.style.visibility = "visible";
         this.loadScript(div, score);
+        window.addEventListener("keydown", this.fKeyHandler, { capture: true });
     };
     EditorGlue.prototype.loadFromFile = function (content, v2, name) {
         editor.setInscore(content, name);
     };
     EditorGlue.prototype.dragEnter = function (event) {
-        event.stopImmediatePropagation();
-        event.preventDefault();
         $("#scene").css("opacity", 0.3);
-        // console.log ("dragEnter ");
+        _super.prototype.dragEnter.call(this, event);
     };
     EditorGlue.prototype.dragLeave = function (event) {
-        event.stopImmediatePropagation();
-        event.preventDefault();
         $("#scene").css("opacity", 1);
-        // console.log ("dragLeave ");
+        _super.prototype.dragLeave.call(this, event);
     };
     return EditorGlue;
 }(INScoreBase));

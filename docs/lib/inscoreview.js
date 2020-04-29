@@ -184,6 +184,8 @@ var JSObjectView = /** @class */ (function () {
             parent.getElement().appendChild(elt);
         if (absolute)
             elt.style.position = "absolute";
+        elt.addEventListener("dragenter", null);
+        elt.addEventListener("dragleave", null);
     }
     JSObjectView.getObjectView = function (id) { return JSObjectView.fObjects[id]; };
     JSObjectView.prototype.setSyncManager = function (sync) { this.fSyncManager = sync; };
@@ -208,7 +210,6 @@ var JSObjectView = /** @class */ (function () {
         var div = this.getElement();
         if (div && div.parentElement)
             return Math.min(div.clientWidth, div.offsetHeight) / Math.min(div.parentElement.offsetWidth, div.parentElement.offsetHeight);
-        // return Math.min(div.clientWidth, div.clientHeight) / Math.min(div.parentElement.clientWidth, div.parentElement.clientHeight);
         return 1;
     };
     JSObjectView.prototype.refresh = function (address) {
@@ -255,23 +256,15 @@ var JSObjectView = /** @class */ (function () {
     JSObjectView.prototype.updatePenControl = function (brush) {
         var elt = this.getElement();
         elt.style.border = brush.penWidth + "px " + JSObjectView.penStyle2Css(brush.penStyle) + " " + brush.penColor;
-        // elt.style.outline = `${brush.penWidth}px ${JSObjectView.penStyle2Css(brush.penStyle)} ${brush.penColor}`;
-        // elt.style.outlineOffset = "0px";
-        // elt.style.borderWidth = brush.penWidth + 'px';
-        // elt.style.borderColor = brush.penColor;
-        // elt.style.borderStyle = JSObjectView.penStyle2Css (brush.penStyle);
     };
     JSObjectView.prototype.getOrigin = function () {
         var div = this.getElement();
-        // return { x: div.clientWidth/2, y: div.clientHeight/2 };
         return { x: div.offsetWidth / 2, y: div.offsetHeight / 2 };
     };
     JSObjectView.prototype.getPos = function (pos) {
         var ppos = this.getParent().getOrigin();
         var x = ppos.x + this.relative2SceneWidth(pos.x) - (this.getElement().offsetWidth * (1 + pos.xorigin * pos.scale) / 2);
         var y = ppos.y + this.relative2SceneHeight(pos.y) - (this.getElement().offsetHeight * (1 + pos.yorigin * pos.scale) / 2);
-        // let x = ppos.x + this.relative2SceneWidth (pos.x) - (this.getElement().clientWidth * (1 + pos.xorigin * pos.scale) / 2 );
-        // let y = ppos.y + this.relative2SceneHeight(pos.y) - (this.getElement().clientHeight * (1 + pos.yorigin * pos.scale) / 2 );
         return { x: x, y: y };
     };
     JSObjectView.prototype.updatePosition = function (pos, elt) {
@@ -502,6 +495,9 @@ var JSSvgBase = /** @class */ (function (_super) {
         _this.getElement().appendChild(_this.fSVG);
         // setting line-height avoids offsets in positionning
         _this.getElement().style.lineHeight = "0";
+        // prevent object to capture drag events
+        _this.fSVG.addEventListener("dragenter", null);
+        _this.fSVG.addEventListener("dragleave", null);
         return _this;
     }
     JSSvgBase.prototype.updateDimensions = function (pos) {
@@ -634,6 +630,8 @@ var JSAutoSize = /** @class */ (function (_super) {
         _this.fSizeSynced = false;
         elt.style.height = "auto";
         elt.style.width = "auto";
+        elt.addEventListener("dragenter", null);
+        elt.addEventListener("dragleave", null);
         return _this;
     }
     JSAutoSize.prototype.updateSpecial = function (obj, objid) {
@@ -1315,6 +1313,8 @@ var JSImageView = /** @class */ (function (_super) {
         _this = _super.call(this, div, parent) || this;
         _this.fImage = img;
         _this.getElement().className = "inscore-img";
+        img.addEventListener("dragenter", null);
+        img.addEventListener("dragleave", null);
         return _this;
     }
     JSImageView.prototype.clone = function (parent) { return new JSImageView(parent); };
@@ -1501,6 +1501,8 @@ var JSRectView = /** @class */ (function (_super) {
         _this.fRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
         _this.getElement().className = "inscore-rect";
         _this.fSVG.appendChild(_this.fRect);
+        _this.fRect.addEventListener("dragenter", null);
+        _this.fRect.addEventListener("dragleave", null);
         return _this;
     }
     JSRectView.prototype.clone = function (parent) { return new JSRectView(parent); };
