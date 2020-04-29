@@ -238,17 +238,26 @@ class INScoreBase {
 		
     //------------------------------------------------------------------------
     // activate drag & drop on inscore divs
-	accept (event : DragEvent) : boolean	{ return true; }
-	dragEnter (event : DragEvent) : void	{}
-	dragLeave (event : DragEvent) : void	{}
+	accept (event : DragEvent) : boolean	{ return event.target == event.currentTarget; }
 	
 	allowdrop (div : HTMLElement) : void {
 		div.addEventListener ("dragenter", (event : DragEvent) : void => { if (this.accept(event)) this.dragEnter(event); }, true);
-		div.addEventListener ("dragleave", (event : DragEvent) : void => { this.dragLeave(event); }, true);
+		div.addEventListener ("dragleave", (event : DragEvent) : void => { if (this.accept(event)) this.dragLeave(event); }, true);
 		div.addEventListener ("dragover",  (event : DragEvent) : void => { event.preventDefault(); }, true);
-		div.addEventListener ("drop",      (event : DragEvent) : void => { this.dragLeave(event); this.drop ( event );} , true);
+		div.addEventListener ("drop",      (event : DragEvent) : void => { this.dragLeave(event); this.drop ( event );}, true);
     }
-		
+
+	dragEnter (event : DragEvent) : void { 
+		event.stopImmediatePropagation();
+		event.preventDefault();
+	}
+
+	dragLeave (event : DragEvent) : void {
+		event.stopImmediatePropagation();
+		event.preventDefault();
+	}
+
+
     //------------------------------------------------------------------------
     // activate drag & drop on inscore divs
 	private watchResize () : void {
