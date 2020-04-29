@@ -14,8 +14,8 @@ html, body {
 #prefs  { margin: 10px; width: calc(100% - 10px); }
 #score  { }
 #preview  { visibility: hidden; opacity: 1; background: white; height: 100%; }
-#fullscore { height: calc(100% - 12px); };
-#code 	{ resize: none; width: 100%; height: calc(100% - 45px); }
+#fullscore { height: calc(100% - 25px); };
+#code 	{ resize: none; width: 100%; height: calc(100% - 47px); }
 #logs 	{ 
 	margin: 5px 0 0 0; 
 	height: calc(100% - 45px);
