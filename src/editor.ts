@@ -22,17 +22,27 @@ class InscoreEditor {
 		});
 		$("code").show();
 	}
+
+	dragEnter (event : DragEvent) : void { 
+		event.stopImmediatePropagation();
+		event.preventDefault();
+		$("#editor").css( "opacity", 0.3 );
+	}
+
+	dragLeave (event : DragEvent) : void {
+		event.stopImmediatePropagation();
+		event.preventDefault();
+		$("#editor").css( "opacity", 1 );
+	}
 	
 	initialize () {
-		this.fEditor.on("dragstart",	(editor: any, e: DragEvent) => {});
-		this.fEditor.on("dragenter",	(editor: any, e: DragEvent) => { $("#editor").css( "opacity", 0.3 ); });
-		this.fEditor.on("dragleave",	(editor: any, e: DragEvent) => { $("#editor").css( "opacity", 1 ); });
+		// this.fEditor.on("dragstart",	(editor: any, e: DragEvent) => {});
+		this.fEditor.on("dragenter",	(editor: any, e: DragEvent) => { this.dragEnter(e); });
+		this.fEditor.on("dragleave",	(editor: any, e: DragEvent) => { this.dragLeave(e); });
 		this.fEditor.on("drop",			(editor: any, e: DragEvent) => { 
-			$("#editor").css( "opacity", 1 );
+			this.dragLeave(e);
 			var data = e.dataTransfer.getData("text");
 			if (!data) {
-				e.stopPropagation();
-				e.preventDefault();
 				let filelist = e.dataTransfer.files;
 				if (!filelist) return;
 			
