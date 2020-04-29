@@ -36,7 +36,10 @@ class EditorGlue extends INScoreBase {
 		let h = div.clientHeight;
 		if (!w || !h)
 			setTimeout (() => this.loadScript (div, script), 50) ;
-		else inscore.loadInscore (script, true);
+		else {
+			inscore.loadInscore (script, true);
+			this.addInscoreDiv (div, 1);
+		}
 	}
 
 	loadPreview() {
