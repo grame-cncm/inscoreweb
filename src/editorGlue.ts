@@ -18,16 +18,20 @@ class inscoreLog extends TLog {
 
 }
 
+interface KeyHandler { (event: KeyboardEvent) : void }
 
 //----------------------------------------------------------------------------
 // a simple glue to inscore engine
 //----------------------------------------------------------------------------
 class EditorGlue extends INScoreBase {
 
+	fKeyHandler : KeyHandler;
+
 	constructor() {
 		gLog = new inscoreLog();
 		super();
 		$("#fullscreen").click		( (event) => { this.loadPreview() }); 
+		this.fKeyHandler = this.closePreview;
     }
 
 
@@ -42,6 +46,13 @@ class EditorGlue extends INScoreBase {
 		}
 	}
 
+	closePreview(event: KeyboardEvent) {
+		if (event.key == 'Escape') {
+			$("#fsclose").click();
+			window.removeEventListener("keydown", this.fKeyHandler, {capture: true});
+		}
+	}
+	
 	loadPreview() {
 		let div = document.getElementById("fullscore");
 		this.initDiv (div, false);
@@ -51,6 +62,7 @@ class EditorGlue extends INScoreBase {
 		let preview = document.getElementById("preview");
 		preview.style.visibility = "visible";
 		this.loadScript (div, score);
+		window.addEventListener ("keydown", this.fKeyHandler, {capture: true});
 	}
 	
 	loadFromFile (content: string, v2: boolean, name: string) : void {
@@ -58,17 +70,13 @@ class EditorGlue extends INScoreBase {
 	}
 
 	dragEnter (event : DragEvent) : void { 
-		event.stopImmediatePropagation();
-		event.preventDefault();
 		$("#scene").css( "opacity", 0.3 )
-// console.log ("dragEnter ");
+		super.dragEnter (event);
 	}
 
 	dragLeave (event : DragEvent) : void {
-		event.stopImmediatePropagation();
-		event.preventDefault();
 		$("#scene").css( "opacity", 1 )
-// console.log ("dragLeave ");
+		super.dragLeave (event);
 	}
 
 }
