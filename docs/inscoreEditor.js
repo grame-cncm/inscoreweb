@@ -94,8 +94,18 @@ var kMouseDClickID = 6;
 // a download function
 //----------------------------------------------------------------------------
 function download(filename, text) {
+    downloadMedia(filename, text, "text/plain;charset=utf-8,");
+    // var element = document.createElement('a');
+    // element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+    // element.setAttribute('download', filename);
+    // element.style.display = 'none';
+    // document.body.appendChild(element);
+    // element.click();
+    // document.body.removeChild(element);
+}
+function downloadMedia(filename, data, type) {
     var element = document.createElement('a');
-    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+    element.setAttribute('href', 'data:' + type + encodeURIComponent(data));
     element.setAttribute('download', filename);
     element.style.display = 'none';
     document.body.appendChild(element);
@@ -119,6 +129,7 @@ var InscoreEditor = /** @class */ (function () {
             lineWrapping: true,
             indentWithTabs: true
         });
+        $("code").show();
     }
     InscoreEditor.prototype.initialize = function () {
         var _this = this;
@@ -248,10 +259,13 @@ var INScoreBase = /** @class */ (function () {
         this.fDivs = new Array();
         var divs = document.getElementsByClassName("inscore");
         for (var i = 0; i < divs.length; i++)
-            this.fDivs.push(new INScoreDiv(divs[i], 1));
+            this.addInscoreDiv(divs[i], 1);
         divs = document.getElementsByClassName("inscore2");
         for (var i = 0; i < divs.length; i++)
-            this.fDivs.push(new INScoreDiv(divs[i], 2));
+            this.addInscoreDiv(divs[i], 2);
+    };
+    INScoreBase.prototype.addInscoreDiv = function (div, version) {
+        this.fDivs.push(new INScoreDiv(div, version));
     };
     //------------------------------------------------------------------------
     // initialization
@@ -471,8 +485,10 @@ var EditorGlue = /** @class */ (function (_super) {
         var h = div.clientHeight;
         if (!w || !h)
             setTimeout(function () { return _this.loadScript(div, script); }, 50);
-        else
+        else {
             inscore.loadInscore(script, true);
+            this.addInscoreDiv(div, 1);
+        }
     };
     EditorGlue.prototype.loadPreview = function () {
         var div = document.getElementById("fullscore");

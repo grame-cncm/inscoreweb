@@ -193,7 +193,7 @@ var JSObjectView = /** @class */ (function () {
     JSObjectView.prototype.getId = function () { return this.fID; };
     JSObjectView.prototype.getElement = function () { return this.fElement; };
     JSObjectView.prototype.getParent = function () { return this.fParent; };
-    JSObjectView.prototype["delete"] = function () { };
+    JSObjectView.prototype["delete"] = function () { JSObjectView.fObjects[this.fID] = null; };
     JSObjectView.prototype.parentWidth = function () {
         var elt = this.getElement().parentElement;
         return Math.min(elt.clientWidth, elt.clientHeight);
@@ -207,7 +207,8 @@ var JSObjectView = /** @class */ (function () {
     JSObjectView.prototype.getRatio = function () {
         var div = this.getElement();
         if (div && div.parentElement)
-            return Math.min(div.clientWidth, div.clientHeight) / Math.min(div.parentElement.clientWidth, div.parentElement.clientHeight);
+            return Math.min(div.clientWidth, div.offsetHeight) / Math.min(div.parentElement.offsetWidth, div.parentElement.offsetHeight);
+        // return Math.min(div.clientWidth, div.clientHeight) / Math.min(div.parentElement.clientWidth, div.parentElement.clientHeight);
         return 1;
     };
     JSObjectView.prototype.refresh = function (address) {
@@ -253,18 +254,24 @@ var JSObjectView = /** @class */ (function () {
     };
     JSObjectView.prototype.updatePenControl = function (brush) {
         var elt = this.getElement();
-        elt.style.borderWidth = brush.penWidth + 'px';
-        elt.style.borderColor = brush.penColor;
-        elt.style.borderStyle = JSObjectView.penStyle2Css(brush.penStyle);
+        elt.style.border = brush.penWidth + "px " + JSObjectView.penStyle2Css(brush.penStyle) + " " + brush.penColor;
+        // elt.style.outline = `${brush.penWidth}px ${JSObjectView.penStyle2Css(brush.penStyle)} ${brush.penColor}`;
+        // elt.style.outlineOffset = "0px";
+        // elt.style.borderWidth = brush.penWidth + 'px';
+        // elt.style.borderColor = brush.penColor;
+        // elt.style.borderStyle = JSObjectView.penStyle2Css (brush.penStyle);
     };
     JSObjectView.prototype.getOrigin = function () {
         var div = this.getElement();
-        return { x: div.clientWidth / 2, y: div.clientHeight / 2 };
+        // return { x: div.clientWidth/2, y: div.clientHeight/2 };
+        return { x: div.offsetWidth / 2, y: div.offsetHeight / 2 };
     };
     JSObjectView.prototype.getPos = function (pos) {
         var ppos = this.getParent().getOrigin();
-        var x = ppos.x + this.relative2SceneWidth(pos.x) - (this.getElement().clientWidth * (1 + pos.xorigin * pos.scale) / 2);
-        var y = ppos.y + this.relative2SceneHeight(pos.y) - (this.getElement().clientHeight * (1 + pos.yorigin * pos.scale) / 2);
+        var x = ppos.x + this.relative2SceneWidth(pos.x) - (this.getElement().offsetWidth * (1 + pos.xorigin * pos.scale) / 2);
+        var y = ppos.y + this.relative2SceneHeight(pos.y) - (this.getElement().offsetHeight * (1 + pos.yorigin * pos.scale) / 2);
+        // let x = ppos.x + this.relative2SceneWidth (pos.x) - (this.getElement().clientWidth * (1 + pos.xorigin * pos.scale) / 2 );
+        // let y = ppos.y + this.relative2SceneHeight(pos.y) - (this.getElement().clientHeight * (1 + pos.yorigin * pos.scale) / 2 );
         return { x: x, y: y };
     };
     JSObjectView.prototype.updatePosition = function (pos, elt) {
@@ -493,6 +500,8 @@ var JSSvgBase = /** @class */ (function (_super) {
         _this.fSVG.setAttribute('xmlns:xlink', "http://www.w3.org/1999/xlink");
         _this.fSVG.setAttribute('version', "1.1");
         _this.getElement().appendChild(_this.fSVG);
+        // setting line-height avoids offsets in positionning
+        _this.getElement().style.lineHeight = "0";
         return _this;
     }
     JSSvgBase.prototype.updateDimensions = function (pos) {
@@ -517,7 +526,6 @@ var JSSvgBase = /** @class */ (function (_super) {
         elt.style.strokeWidth = pen.penWidth.toString();
         elt.style.stroke = pen.penColor;
         elt.style.strokeDasharray = JSSvgBase.penStyle2Dash(pen.penStyle);
-        elt = this.getSVGTarget();
         if (pen.brushStyle == TBrushStyle.kNoBrush)
             elt.style.fill = "none";
         else {
@@ -707,13 +715,6 @@ var JSEllipseView = /** @class */ (function (_super) {
     JSEllipseView.prototype.clone = function (parent) { return new JSEllipseView(parent); };
     JSEllipseView.prototype.getSVGTarget = function () { return this.fEllipse; };
     JSEllipseView.prototype.toString = function () { return "JSEllipseView"; };
-    // 	getPos(pos: OPosition) : Point {
-    // 		let ppos = this.getParent().getOrigin();
-    //         let x = ppos.x + this.relative2SceneWidth (pos.x) - (this.getElement().clientWidth * (1 + pos.xorigin * pos.scale) / 2 );
-    // 		let y = ppos.y + this.relative2SceneHeight(pos.y) - (this.getElement().clientHeight * (1 + pos.yorigin * pos.scale) / 2 );
-    // gLog.log(this + ".getPos: " + this.getId() + " -> " + x + " " + y);
-    //         return { x: x, y: y};
-    // 	}
     JSEllipseView.prototype.updateSVGDimensions = function (w, h) {
         var rx = w / 2;
         var ry = h / 2;
@@ -1575,46 +1576,15 @@ var JSSceneView = /** @class */ (function (_super) {
         _this = _super.call(this, div, null, absolute) || this;
         _this.fAbsolutePos = absolute;
         _this.updateObjectSize(objid, div.clientWidth, div.clientHeight);
+        // for a yet unknown reason, removing the next line result in incorrect
+        // children positionning (like if position becomes relative to the window)
         div.style.filter = "blur(0px)";
         return _this;
     }
     JSSceneView.prototype.clone = function (parent) { return null; };
-    // parentWidth() : number			{ 
-    // 	let p = this.getElement().parentElement; 
-    // 	return Math.min(p.clientWidth, p.clientHeight); 
-    // }
-    // parentHeight() : number			{ 
-    // 	let p = this.getElement().parentElement; 
-    // 	let h = Math.min(p.clientWidth, p.clientHeight); 
-    // 	gLog.log(this + " h: " + h );
-    // 	return h;
-    // }
-    // parentWidth() : number			{ return this.getElement().parentElement.clientWidth; }
-    // parentHeight() : number			{ return this.getElement().parentElement.clientHeight; }
-    // 	getOrigin () : Point { 
-    // 		if (this.fAbsolutePos)
-    // 			return super.getOrigin();
-    // 		let div = this.getElement();
-    // 		// let x = div.offsetWidth / 2;
-    // 		// let y = div.offsetHeight / 2;
-    // 		let x = div.clientWidth / 2;
-    // 		let y = div.clientHeight / 2;
-    // gLog.log(this + ".getOrigin: " + x + " " + y );
-    // 		return  { x: x, y: y};
-    // 	}
-    JSSceneView.prototype.getParentOrigin = function () {
-        var div = this.getElement().parentElement;
-        var r = div.getBoundingClientRect();
-        var x = r.left + (div.clientWidth / 2);
-        var y = r.top + (div.clientHeight / 2);
-        return { x: r.left + div.clientWidth / 2, y: r.top + div.clientHeight / 2 };
-    };
-    JSSceneView.prototype.getPos = function (pos) {
-        var ppos = this.getParentOrigin();
-        var x = ppos.x + this.relative2SceneWidth(pos.x - (pos.width * (1 + pos.xorigin * pos.scale) / 2));
-        var y = ppos.y + this.relative2SceneHeight(pos.y - (pos.height * (1 + pos.yorigin * pos.scale) / 2));
-        return { x: x, y: y };
-    };
+    JSSceneView.prototype.toString = function () { return "JSSceneView"; };
+    JSSceneView.prototype.parentWidth = function () { return this.getElement().parentElement.offsetWidth; };
+    JSSceneView.prototype.parentHeight = function () { return this.getElement().parentElement.offsetHeight; };
     JSSceneView.prototype.updatePosition = function (pos, elt) {
         if (this.fAbsolutePos) {
             _super.prototype.updatePosition.call(this, pos, elt);
@@ -1629,7 +1599,6 @@ var JSSceneView = /** @class */ (function (_super) {
         div.style.background = color.rgb;
         div.style.opacity = color.alpha.toString();
     };
-    JSSceneView.prototype.toString = function () { return "JSSceneView"; };
     return JSSceneView;
 }(JSObjectView));
 ///<reference path="JSHtmlView.ts"/>
