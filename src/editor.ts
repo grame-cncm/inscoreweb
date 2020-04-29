@@ -51,6 +51,7 @@ class InscoreEditor {
 					this.drop (filelist[i]);
 			}
 		});
+
 		$("#font-family").change 	( (event) => { this.fEditor.getWrapperElement().style.fontFamily =  <string>$("#font-family").val(); } ); 
 		$("#font-size").change 		( (event) => { this.fEditor.getWrapperElement().style.fontSize =  $("#font-size").val() + "px"; } ); 
 		$("#etheme").change 		( (event) => { this.fEditor.setOption("theme", <string>$("#etheme").val()); } );
@@ -66,6 +67,12 @@ class InscoreEditor {
 		this.fEditor.setOption("theme", <string>$("#etheme").val());
 		this.fEditor.setOption("lineWrapping",  <boolean>$("#wraplines").is(":checked"));
 		this.setInscore (this.fEditor.getValue(), this.fFileName);
+
+		let logs = document.getElementById ("logs");
+		$("#log-font").click		( () => { logs.style.fontFamily = <string>$("#log-font").val(); });
+		$("#log-size").click		( () => { logs.style.fontSize = $("#log-size").val() + "px"; });
+		logs.style.fontFamily = <string>$("#log-font").val();
+		logs.style.fontSize = $("#log-size").val() + "px";
 	}
 
 	
