@@ -20,6 +20,7 @@ class InscoreEditor {
 			lineWrapping: true,
 			indentWithTabs: true
 		});
+		$("code").show();
 	}
 	
 	initialize () {
