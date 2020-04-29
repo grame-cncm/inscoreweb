@@ -4,8 +4,8 @@
 	<meta http-equiv="Content-Type" content="text/html;charset=utf-8" >
 	<link rel="shortcut icon" type="image/x-icon" href="imgs/favicon.ico" />
 
-	<link href="css/inscore.css" rel="stylesheet">
-	<link rel="stylesheet" href="font/stylesheet.css" />
+	<!-- <link href="css/inscore.css" rel="stylesheet"> -->
+	<!-- <link rel="stylesheet" href="font/stylesheet.css" /> -->
 	<link rel="stylesheet" href="css/bootstrap.min.css">
 	<link rel="stylesheet" href="css/codemirror.min.css" media="screen" />
 	<link rel="stylesheet" href="css/inscore.min.css" media="screen" />
@@ -123,6 +123,37 @@ More information on <br />
 		</div>
 
 		<div id="about" class="tab-pane fade about">
+			<h2>INScore JS Version <span id=version></span> <span style="font-size: 85%">alpha</span></h2>
+			<p>INScore is an environment for the design of interactive augmented music scores. </p>
+			<p>More information on <a href="https://inscore.grame.fr" target=_blank>inscore.grame.fr</a></p>
+			<hr />
+			<p>
+				INscore is an open source project hosted on <a href="https://github.com/grame-cncm/inscore" target=_blank>github</a>.
+				<br />
+				This editor is an open source project, also hosted on <a href="https://github.com/grame-cncm/inscoreweb" target=_blank>github</a>.
+				<br/>
+				<p>Both are at alpha stage and your contribution is welcome. <br/>
+					Direct potential issues about INScore to: 
+					<ul><a href="https://github.com/grame-cncm/inscore/issues">https://github.com/grame-cncm/inscore/issues</a></ul> 
+					and issues regarding the editor to: 
+					<ul><a href="https://github.com/grame-cncm/inscoreweb/issues">https://github.com/grame-cncm/inscoreweb/issues</a>.</ul>
+				</p>
+			</p>
+			<br/>
+
+			<!-- <h3>Acknowledgments</h3>
+			<p class="acknow">
+			INScore was initiated in the framework of the <a href="http://interlude.ircam.fr"target=_blank>Interlude project</a>, funded by the French National Research Agency [ANR-08-CORD-010].
+			<br />
+			Many thanks to all the people who have been contributing to INScore design and development, and especially:
+			<ul  class="acknow">
+			Kevin Bardotti, Christophe Daudin, Sarah Denoux, Martin Carlé, Guillaume Gouilloux, Joachim Heintz, Camille Le Roi, Gabriel Lepetit-Aimon, Arnaud Margaillan, Eric Ravel.</ul>
+			Many thanks also to the Interlude team 
+			<ul  class="acknow">Frédéric Bevilacqua, Norbert Schnell, Nicolas Rasamimanana, Emmanuel Fléty, Fabrice Guédy, Jean-Louis Frechin, Uros Petrevski, Bernard Garabédian, Rémi Dury, Bruno Verbrugghe - who contributed to the elaboration of the project foundations.</ul>
+			And of course, warmest thanks to my colleagues and friends Stéphane Letz and Yann Orlarey.
+			</p> -->
+			<hr/>
+			<a href="https://www.grame.fr" target=_blank><img src="imgs/grame.png" width=100 alt="Grame" class="img-centered"></a>
 		</div>
 	  </div>
   </div>  
@@ -214,6 +245,30 @@ More information on <br />
 		  </select></td></tr>
 		  <tr class="prefs-table"><td>Wrap lines</td><td><input type="checkbox" id="wraplines" checked></td></tr>
 		  </table>
+
+		  <hr />
+		  <h3>Log preferences</h3>
+		  <table>
+			<tr class="prefs-table"><td>Font Family</td><td>
+			<select class="form-control" id="log-font">
+				<option>Lucida</option>
+				<option>Monaco</option>
+				<option selected>Andale Mono</option>
+				<option>Courier</option>
+				<option>Courier New</option>
+			</select></td></tr>
+			<tr class="prefs-table"><td>Font Size</td><td>
+			<select class="form-control" id="log-size">
+				<option>10</option>
+				<option selected>12</option>
+				<option>14</option>
+				<option>16</option>
+				<option>18</option>
+				<option>24</option>
+			</select></td></tr>
+			</table>
+  
+
   
 		  </div>
 		  </div>
