@@ -184,8 +184,6 @@ var JSObjectView = /** @class */ (function () {
             parent.getElement().appendChild(elt);
         if (absolute)
             elt.style.position = "absolute";
-        elt.addEventListener("dragenter", null);
-        elt.addEventListener("dragleave", null);
     }
     JSObjectView.getObjectView = function (id) { return JSObjectView.fObjects[id]; };
     JSObjectView.prototype.setSyncManager = function (sync) { this.fSyncManager = sync; };
@@ -495,9 +493,6 @@ var JSSvgBase = /** @class */ (function (_super) {
         _this.getElement().appendChild(_this.fSVG);
         // setting line-height avoids offsets in positionning
         _this.getElement().style.lineHeight = "0";
-        // prevent object to capture drag events
-        _this.fSVG.addEventListener("dragenter", null);
-        _this.fSVG.addEventListener("dragleave", null);
         return _this;
     }
     JSSvgBase.prototype.updateDimensions = function (pos) {
@@ -630,8 +625,6 @@ var JSAutoSize = /** @class */ (function (_super) {
         _this.fSizeSynced = false;
         elt.style.height = "auto";
         elt.style.width = "auto";
-        elt.addEventListener("dragenter", null);
-        elt.addEventListener("dragleave", null);
         return _this;
     }
     JSAutoSize.prototype.updateSpecial = function (obj, objid) {
@@ -1313,8 +1306,6 @@ var JSImageView = /** @class */ (function (_super) {
         _this = _super.call(this, div, parent) || this;
         _this.fImage = img;
         _this.getElement().className = "inscore-img";
-        img.addEventListener("dragenter", null);
-        img.addEventListener("dragleave", null);
         return _this;
     }
     JSImageView.prototype.clone = function (parent) { return new JSImageView(parent); };
@@ -1501,8 +1492,6 @@ var JSRectView = /** @class */ (function (_super) {
         _this.fRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
         _this.getElement().className = "inscore-rect";
         _this.fSVG.appendChild(_this.fRect);
-        _this.fRect.addEventListener("dragenter", null);
-        _this.fRect.addEventListener("dragleave", null);
         return _this;
     }
     JSRectView.prototype.clone = function (parent) { return new JSRectView(parent); };

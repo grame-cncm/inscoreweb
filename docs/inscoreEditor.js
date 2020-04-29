@@ -150,8 +150,6 @@ var InscoreEditor = /** @class */ (function () {
             _this.dragLeave(e);
             var data = e.dataTransfer.getData("text");
             if (!data) {
-                e.stopImmediatePropagation();
-                e.preventDefault();
                 var filelist = e.dataTransfer.files;
                 if (!filelist)
                     return;
@@ -174,6 +172,11 @@ var InscoreEditor = /** @class */ (function () {
         this.fEditor.setOption("theme", $("#etheme").val());
         this.fEditor.setOption("lineWrapping", $("#wraplines").is(":checked"));
         this.setInscore(this.fEditor.getValue(), this.fFileName);
+        var logs = document.getElementById("logs");
+        $("#log-font").click(function () { logs.style.fontFamily = $("#log-font").val(); });
+        $("#log-size").click(function () { logs.style.fontSize = $("#log-size").val() + "px"; });
+        logs.style.fontFamily = $("#log-font").val();
+        logs.style.fontSize = $("#log-size").val() + "px";
     };
     InscoreEditor.prototype.saveInscore = function () { download(this.fFileName + ".inscore", this.fEditor.getValue()); };
     InscoreEditor.prototype.saveHtml = function () { download(this.fFileName + ".html", document.getElementById("scene").innerHTML); };
@@ -477,10 +480,11 @@ var inscoreLog = /** @class */ (function (_super) {
         return _super !== null && _super.apply(this, arguments) || this;
     }
     inscoreLog.prototype.log = function (msg) {
-        document.getElementById("logs").textContent += msg + "\n";
+        // msg = msg.replace (/\n/g, "<hr />");
+        document.getElementById("logs").innerHTML += msg + "\n"; // + "<br />";
     };
     inscoreLog.prototype.error = function (msg) {
-        document.getElementById("logs").textContent += msg + "\n";
+        document.getElementById("logs").innerHTML += msg + "\n"; // + "<br />";
     };
     return inscoreLog;
 }(TLog));
@@ -11869,4 +11873,5 @@ var glue = new EditorGlue();
 glue.start().then(function () {
     editor = new InscoreEditor("code");
     editor.initialize();
+    $("#version").text(inscore.versionStr());
 });
