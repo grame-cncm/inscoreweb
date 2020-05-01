@@ -16,8 +16,8 @@ y =-0.2;
 /ITL/scene/rect  y  $y;
 /ITL/scene/rect  z  1.0;
 
-/ITL/scene/rep1  set  img "imgs/repere.png";
-/ITL/scene/rep2  set  img "imgs/repere.png";
+/ITL/scene/rep1  set  img "https://inscoreweb.grame.fr/imgs/repere.png";
+/ITL/scene/rep2  set  img "https://inscoreweb.grame.fr/imgs/repere.png";
 /ITL/scene/rep2  x  $x;
 /ITL/scene/rep2  y  $y;
 
