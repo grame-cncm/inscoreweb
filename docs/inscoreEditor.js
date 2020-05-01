@@ -480,11 +480,10 @@ var inscoreLog = /** @class */ (function (_super) {
         return _super !== null && _super.apply(this, arguments) || this;
     }
     inscoreLog.prototype.log = function (msg) {
-        // msg = msg.replace (/\n/g, "<hr />");
-        document.getElementById("logs").innerHTML += msg + "\n"; // + "<br />";
+        document.getElementById("logs").textContent += msg + "\n";
     };
     inscoreLog.prototype.error = function (msg) {
-        document.getElementById("logs").innerHTML += msg + "\n"; // + "<br />";
+        document.getElementById("logs").textContent += msg + "\n";
     };
     return inscoreLog;
 }(TLog));
