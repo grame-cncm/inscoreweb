@@ -193,7 +193,14 @@ var JSObjectView = /** @class */ (function () {
     JSObjectView.prototype.getId = function () { return this.fID; };
     JSObjectView.prototype.getElement = function () { return this.fElement; };
     JSObjectView.prototype.getParent = function () { return this.fParent; };
-    JSObjectView.prototype["delete"] = function () { JSObjectView.fObjects[this.fID] = null; };
+    JSObjectView.prototype["delete"] = function () {
+        if (this.fSyncManager)
+            this.fSyncManager.clean();
+        var parent = this.getElement().parentNode; // parent could be deleted
+        if (parent)
+            parent.removeChild(this.getElement());
+        JSObjectView.fObjects[this.fID] = null;
+    };
     JSObjectView.prototype.parentWidth = function () {
         var elt = this.getElement().parentElement;
         return Math.min(elt.clientWidth, elt.clientHeight);
@@ -226,8 +233,7 @@ var JSObjectView = /** @class */ (function () {
     //---------------------------------------------------------------------
     JSObjectView.prototype.updateView = function (obj, oid, master, force, keepRatio) {
         if (keepRatio === void 0) { keepRatio = false; }
-        if (obj.deleted() && this.getElement().parentNode) { // parent could be deleted
-            this.getElement().parentNode.removeChild(this.getElement());
+        if (obj.deleted()) {
             this["delete"]();
             return;
         }
@@ -1824,6 +1830,10 @@ var TSyncManager = /** @class */ (function () {
         this.fTarget.getParent().getElement().appendChild(this.fTarget.getElement());
         this.fRemoveChild = true;
         return false;
+    };
+    TSyncManager.prototype.clean = function () {
+        var _this = this;
+        this.fSync.forEach(function (m, index) { _this.remove(index); });
     };
     //-----------------------------------------------------------------------
     // table utilities
