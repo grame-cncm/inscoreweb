@@ -204,7 +204,14 @@ var JSObjectView = /** @class */ (function () {
     };
     JSObjectView.prototype.updateSpecial = function (obj, oid) { return true; };
     JSObjectView.prototype.updateSpecific = function (obj) { };
-    JSObjectView.prototype.getRatio = function () {
+    // the scale applied to preserve proportional rendenring regarding scene size
+    JSObjectView.prototype.getScale = function (pos) {
+        var parent = this.getParent();
+        return pos.scale;
+        // return parent ? pos.scale * parent.getScale(pos) : pos.scale;
+    };
+    // the ratio applied in synchronisation mode to preserve the slave proportions
+    JSObjectView.prototype.getSyncRatio = function () {
         var div = this.getElement();
         if (div && div.parentElement)
             return Math.min(div.clientWidth, div.offsetHeight) / Math.min(div.parentElement.offsetWidth, div.parentElement.offsetHeight);
@@ -230,7 +237,7 @@ var JSObjectView = /** @class */ (function () {
                 return;
         var infos = obj.getUpdateInfos(master);
         if (keepRatio) {
-            var r = this.getParent().getRatio();
+            var r = this.getParent().getSyncRatio();
             infos.position.scale /= r;
         }
         if (infos.updatecolor)
@@ -245,7 +252,7 @@ var JSObjectView = /** @class */ (function () {
         if (infos.updateevents || force)
             this.updateEvents(infos.events, obj.getOSCAddress());
         if (infos.showmap)
-            gLog.log(this + " show map -> " + obj.getMaps().size());
+            console.log(this + " show map -> " + obj.getMaps().size());
     };
     JSObjectView.prototype.updateColor = function (color) {
         this.fElement.style.color = color.rgb;
@@ -276,8 +283,9 @@ var JSObjectView = /** @class */ (function () {
     };
     JSObjectView.prototype.getTransform = function (pos) {
         var transform = "";
-        if (pos.scale != 1)
-            transform += "scale(" + pos.scale + "," + pos.scale + ") ";
+        var scale = this.getScale(pos);
+        if (scale != 1)
+            transform += "scale(" + scale + "," + scale + ") ";
         if (pos.xangle)
             transform += "rotateX(" + pos.xangle + "deg) ";
         if (pos.yangle)
@@ -936,20 +944,8 @@ var PianoRollLineMode;
     PianoRollLineMode[PianoRollLineMode["kPRAutoLines"] = 0] = "kPRAutoLines";
     PianoRollLineMode[PianoRollLineMode["kPRNoLine"] = -1] = "kPRNoLine";
 })(PianoRollLineMode || (PianoRollLineMode = {}));
-var TLog = /** @class */ (function () {
-    function TLog() {
-    }
-    TLog.prototype.log = function (msg) {
-        console.log(msg);
-    };
-    TLog.prototype.error = function (msg) {
-        console.error(msg);
-    };
-    return TLog;
-}());
 ///<reference path="JSSVGBase.ts"/>
 ///<reference path="guidoengine.ts"/>
-///<reference path="TLog.ts"/>
 var JSGMNView = /** @class */ (function (_super) {
     __extends(JSGMNView, _super);
     function JSGMNView(parent, guido) {
@@ -1021,7 +1017,7 @@ var JSGMNView = /** @class */ (function (_super) {
             return true;
         }
         else
-            gLog.error(obj.getOSCAddress() + " failed to parse gmn code.");
+            console.error(obj.getOSCAddress() + " failed to parse gmn code.");
         return false;
     };
     JSGMNView.prototype.updateSpecial = function (obj, oid) {
@@ -1029,7 +1025,7 @@ var JSGMNView = /** @class */ (function (_super) {
         if (this.fGuido)
             return this.gmn2svg(obj, guido.code, guido.page);
         else
-            gLog.log("Guido engine is not available");
+            console.log("Guido engine is not available");
         return false;
     };
     // this method is called by the model to update the map synchronously
@@ -1421,7 +1417,7 @@ var JSPianoRollView = /** @class */ (function (_super) {
             }
         }
         else
-            gLog.log("Guido engine is not available");
+            console.log("Guido engine is not available");
         return false;
     };
     return JSPianoRollView;
@@ -1574,6 +1570,10 @@ var JSSceneView = /** @class */ (function (_super) {
     }
     JSSceneView.prototype.clone = function (parent) { return null; };
     JSSceneView.prototype.toString = function () { return "JSSceneView"; };
+    JSSceneView.prototype.getRatio = function () {
+        var div = this.getElement();
+        return Math.min(screen.width, screen.height) / Math.min(div.clientWidth, div.clientHeight) * 2;
+    };
     JSSceneView.prototype.parentWidth = function () { return this.getElement().parentElement.offsetWidth; };
     JSSceneView.prototype.parentHeight = function () { return this.getElement().parentElement.offsetHeight; };
     JSSceneView.prototype.updatePosition = function (pos, elt) {
@@ -1712,7 +1712,6 @@ var libmusicxml = /** @class */ (function () {
 }());
 ///<reference path="JSGMNView.ts"/>
 ///<reference path="libmusicxml.ts"/>
-///<reference path="TLog.ts"/>
 var JSXMLView = /** @class */ (function (_super) {
     __extends(JSXMLView, _super);
     function JSXMLView(parent, xmllib, guido) {
@@ -1731,7 +1730,7 @@ var JSXMLView = /** @class */ (function (_super) {
             return content.length ? this.gmn2svg(obj, content, xml.page) : false;
         }
         else
-            gLog.log("libMusicXML is not available");
+            console.log("libMusicXML is not available");
         return false;
     };
     return JSXMLView;
@@ -1868,7 +1867,6 @@ var TSyncManager = /** @class */ (function () {
 }());
 ///<reference path="guidoengine.ts"/>
 ///<reference path="libmusicxml.ts"/>
-///<reference path="TLog.ts"/>
 //----------------------------------------------------------------------------
 var libraries = /** @class */ (function () {
     function libraries() {
@@ -1889,7 +1887,7 @@ var libraries = /** @class */ (function () {
             return __generator(this, function (_a) {
                 return [2 /*return*/, new Promise(function (success, failure) {
                         _this.fGuido.initialise().then(function () {
-                            gLog.log("GuidoEngine version " + _this.fGuido.getFloatVersion());
+                            console.log("GuidoEngine version " + _this.fGuido.getFloatVersion());
                             success(_this);
                         }, function () { _this.fGuido = null; success(_this); });
                     })];
@@ -1902,7 +1900,7 @@ var libraries = /** @class */ (function () {
             return __generator(this, function (_a) {
                 return [2 /*return*/, new Promise(function (success, failure) {
                         _this.fXMLLib.initialise().then(function () {
-                            gLog.log("libMusicXML version " + _this.fXMLLib.libVersionStr());
+                            console.log("libMusicXML version " + _this.fXMLLib.libVersionStr());
                             success(_this);
                         }, function () { _this.fXMLLib = null; success(_this); });
                     })];
@@ -1938,7 +1936,6 @@ var inscorelibs = new libraries();
 ///<reference path="JSSVGfView.ts"/>
 ///<reference path="JSVideoView.ts"/>
 ///<reference path="TSyncManager.ts"/>
-///<reference path="TLog.ts"/>
 ///<reference path="libraries.ts"/>
 //----------------------------------------------------------------------------
 var JSViewFactory = /** @class */ (function () {
@@ -2028,10 +2025,10 @@ var JSViewFactory = /** @class */ (function () {
             case "memimg":
             case "sig":
             case "signode":
-                gLog.log("Type " + type + " is not yet supported");
+                console.log("Type " + type + " is not yet supported");
                 break;
             default:
-                gLog.error("JSViewFactory::create unknown type " + type);
+                console.error("JSViewFactory::create unknown type " + type);
         }
         if (view) {
             view.setSyncManager(new TSyncManager(view));
@@ -2044,7 +2041,6 @@ var JSViewFactory = /** @class */ (function () {
 var inscorefactory = new JSViewFactory();
 ///<reference path="inscore.ts"/>
 ///<reference path="libraries.ts"/>
-///<reference path="TLog.ts"/>
 //----------------------------------------------------------------------------
 var INScoreGlue = /** @class */ (function () {
     function INScoreGlue() {
@@ -2075,4 +2071,3 @@ var INScoreGlue = /** @class */ (function () {
     return INScoreGlue;
 }());
 var gGlue = new INScoreGlue();
-var gLog = new TLog();

@@ -47,17 +47,15 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
-var TLog = /** @class */ (function () {
-    function TLog() {
-    }
-    TLog.prototype.log = function (msg) {
-        console.log(msg);
-    };
-    TLog.prototype.error = function (msg) {
-        console.error(msg);
-    };
-    return TLog;
-}());
+// class TLog {
+// 	log  (msg: string): void {
+// 		console.log(msg);
+// 	}
+// 	error(msg: string): void {
+// 		console.error (msg);
+// 	}
+// }
+// declare var gLog : TLog;
 // object types
 var kArcType = "arc";
 var kCurveType = "curve";
@@ -472,30 +470,14 @@ var INScoreBase = /** @class */ (function () {
 ///<reference path="editor.ts"/>
 ///<reference path="TLog.ts"/>
 //----------------------------------------------------------------------------
-// log support
-//----------------------------------------------------------------------------
-var inscoreLog = /** @class */ (function (_super) {
-    __extends(inscoreLog, _super);
-    function inscoreLog() {
-        return _super !== null && _super.apply(this, arguments) || this;
-    }
-    inscoreLog.prototype.log = function (msg) {
-        document.getElementById("logs").textContent += msg + "\n";
-    };
-    inscoreLog.prototype.error = function (msg) {
-        document.getElementById("logs").textContent += msg + "\n";
-    };
-    return inscoreLog;
-}(TLog));
-//----------------------------------------------------------------------------
 // a simple glue to inscore engine
 //----------------------------------------------------------------------------
 var EditorGlue = /** @class */ (function (_super) {
     __extends(EditorGlue, _super);
     function EditorGlue() {
-        var _this = this;
-        gLog = new inscoreLog();
-        _this = _super.call(this) || this;
+        var _this = 
+        // gLog = new inscoreLog();
+        _super.call(this) || this;
         $("#fullscreen").click(function (event) { _this.loadPreview(); });
         _this.fKeyHandler = _this.closePreview;
         return _this;
@@ -11864,6 +11846,31 @@ function load(name, path) {
     });
     CodeMirror.defineMIME("text/inscore", "inscore");
 });
+function mylog(text, level) {
+    var dest = document.getElementById("logs");
+    if (level == 1)
+        text = '<span class="warning">' + text + '</span>';
+    else if (level == 2)
+        text = '<span class="error">' + text + '</span>';
+    dest.innerHTML += text + "\n";
+}
+var oldcons = console;
+var console = (function (oldCons) {
+    return {
+        log: function (text) {
+            oldCons.log(text);
+            mylog(text, 0);
+        },
+        warn: function (text) {
+            oldCons.warn(text);
+            mylog(text, 1);
+        },
+        error: function (text) {
+            oldCons.error(text);
+            mylog(text, 2);
+        }
+    };
+}(window.console));
 ///<reference path="editorGlue.ts"/>
 ///<reference path="editor.ts"/>
 //------------------------------------------------------------------------
