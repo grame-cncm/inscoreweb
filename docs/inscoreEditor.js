@@ -47,15 +47,6 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
-// class TLog {
-// 	log  (msg: string): void {
-// 		console.log(msg);
-// 	}
-// 	error(msg: string): void {
-// 		console.error (msg);
-// 	}
-// }
-// declare var gLog : TLog;
 // object types
 var kArcType = "arc";
 var kCurveType = "curve";
@@ -280,15 +271,6 @@ var INScoreBase = /** @class */ (function () {
     };
     //------------------------------------------------------------------------
     // initialization
-    // async initialise():Promise<any> { 
-    //     var module = INScoreModule();
-    //     return new Promise( (success: any, failure: any) => {
-    //         module['onRuntimeInitialized'] = () => {
-    //             this.moduleInit (module);
-    //             success ( this ); 
-    //             }
-    //     });
-    // }
     INScoreBase.prototype.start = function () {
         return __awaiter(this, void 0, void 0, function () {
             var _this = this;
@@ -315,10 +297,11 @@ var INScoreBase = /** @class */ (function () {
         var content = div.innerText;
         div.innerText = "";
         if (content.length) {
-            if (v2)
-                inscore.loadInscore2(content);
-            else
-                inscore.loadInscore(content, false);
+            this.loadInscore(content, v2);
+            // if (v2)
+            // 	inscore.loadInscore2 (content);
+            // else
+            // 	inscore.loadInscore (content, false);
         }
     };
     //------------------------------------------------------------------------
@@ -328,22 +311,29 @@ var INScoreBase = /** @class */ (function () {
         var name = file.substring(0, file.lastIndexOf('.'));
         return { name: name, ext: ext };
     };
+    INScoreBase.prototype.loadInscore = function (content, v2) {
+        var status = false;
+        if (v2)
+            status = inscore.loadInscore2(content);
+        else
+            status = inscore.loadInscore(content, v2);
+        if (!status)
+            showlog(true);
+    };
     //------------------------------------------------------------------------
     // load an inscore file - called when an inscore file is dropped
     INScoreBase.prototype.loadFromFile = function (content, v2, name) {
-        if (v2)
-            inscore.loadInscore2(content);
-        else
-            inscore.loadInscore(content, true);
+        this.loadInscore(content, v2);
     };
     //------------------------------------------------------------------------
     // load an inscore script - called when text is dropped
     INScoreBase.prototype.loadFromText = function (content, v2) {
-        inscore.loadInscore(content, true);
+        this.loadInscore(content, true);
+        // if (!inscore.loadInscore (content, true)) showlog(true);
     };
     //------------------------------------------------------------------------
     // load an inscore file
-    INScoreBase.prototype.loadInscore = function (file, v2) {
+    INScoreBase.prototype.fetchInscore = function (file, v2) {
         var _this = this;
         var reader = new FileReader();
         reader.readAsText(file);
@@ -413,10 +403,10 @@ var INScoreBase = /** @class */ (function () {
             var type = this.fExtHandlers[properties.ext];
             switch (type) {
                 case kInscore:
-                    this.loadInscore(file, false);
+                    this.fetchInscore(file, false);
                     break;
                 case kInscore2:
-                    this.loadInscore(file, true);
+                    this.fetchInscore(file, true);
                     break;
                 default:
                     this.loadFile(file, fileName, type, e.target);
@@ -428,7 +418,6 @@ var INScoreBase = /** @class */ (function () {
         var data = e.dataTransfer.getData("Text");
         if (data)
             this.loadFromText(data, true);
-        // if (data)	inscore.loadInscore(data, false);
         else
             this.filedropped(e);
         var div = e.target;
@@ -468,20 +457,18 @@ var INScoreBase = /** @class */ (function () {
 }());
 ///<reference path="inscoreBase.ts"/>
 ///<reference path="editor.ts"/>
-///<reference path="TLog.ts"/>
 //----------------------------------------------------------------------------
 // a simple glue to inscore engine
 //----------------------------------------------------------------------------
 var EditorGlue = /** @class */ (function (_super) {
     __extends(EditorGlue, _super);
     function EditorGlue() {
-        var _this = 
-        // gLog = new inscoreLog();
-        _super.call(this) || this;
+        var _this = _super.call(this) || this;
         $("#fullscreen").click(function (event) { _this.loadPreview(); });
         _this.fKeyHandler = _this.closePreview;
         return _this;
     }
+    // load a script in an arbitrary div
     EditorGlue.prototype.loadScript = function (div, script) {
         var _this = this;
         var w = div.clientWidth;
@@ -11881,3 +11868,9 @@ glue.start().then(function () {
     editor.initialize();
     $("#version").text(inscore.versionStr());
 });
+var showlog = function (status) {
+    if (status)
+        $("#lognav").click();
+    else
+        $("#editornav").click();
+};

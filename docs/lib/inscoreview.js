@@ -204,12 +204,13 @@ var JSObjectView = /** @class */ (function () {
     };
     JSObjectView.prototype.updateSpecial = function (obj, oid) { return true; };
     JSObjectView.prototype.updateSpecific = function (obj) { };
-    // the scale applied to preserve proportional rendenring regarding scene size
-    JSObjectView.prototype.getScale = function (pos) {
+    // the scale applied to preserve proportional rendering regarding scene size
+    JSObjectView.prototype.parentScale = function () {
         var parent = this.getParent();
-        return pos.scale;
-        // return parent ? pos.scale * parent.getScale(pos) : pos.scale;
+        var pscale = parent ? parent.parentScale() : 1;
+        return pscale;
     };
+    JSObjectView.prototype.getScale = function (pos) { return pos.scale * this.parentScale(); };
     // the ratio applied in synchronisation mode to preserve the slave proportions
     JSObjectView.prototype.getSyncRatio = function () {
         var div = this.getElement();
@@ -276,9 +277,14 @@ var JSObjectView = /** @class */ (function () {
         elt.style.visibility = (pos.hidden) ? "hidden" : "inherit";
         elt.style.transform = this.getTransform(pos);
         this.updateDimensions(pos);
-        var p = this.getPos(pos);
-        elt.style.left = p.x + "px";
-        elt.style.top = p.y + "px";
+        if (pos.x > 90000) { // synchronized object is out of master time
+            elt.style.visibility = "hidden";
+        }
+        else {
+            var p = this.getPos(pos);
+            elt.style.left = p.x + "px";
+            elt.style.top = p.y + "px";
+        }
         elt.style.zIndex = pos.zorder.toString();
     };
     JSObjectView.prototype.getTransform = function (pos) {
@@ -503,6 +509,8 @@ var JSSvgBase = /** @class */ (function (_super) {
         _this.getElement().style.lineHeight = "0";
         return _this;
     }
+    // basic svg objects are scaled to parent dimension by design
+    JSSvgBase.prototype.parentScale = function () { return 1; };
     JSSvgBase.prototype.updateDimensions = function (pos) {
         var w = Math.max(1, this.relative2SceneWidth(pos.width));
         var h = Math.max(1, this.relative2SceneHeight(pos.height));
@@ -993,6 +1001,8 @@ var JSGMNView = /** @class */ (function (_super) {
     JSGMNView.prototype.updatePenControl = function (pen) { this.updateRegularPen(pen); };
     JSGMNView.prototype.parse = function (gmn) { return this.fGuido.string2AR(this.fParser, gmn); };
     JSGMNView.prototype.string2Ar = function (obj, gmn) { return this.parse(gmn); };
+    // scaled to get a size similar to native app
+    JSGMNView.prototype.parentScale = function () { return this.getParent().parentScale() * 2.5; };
     JSGMNView.prototype.gmn2svg = function (obj, gmn, page) {
         var ar = this.string2Ar(obj, gmn);
         if (ar) {
@@ -1570,10 +1580,12 @@ var JSSceneView = /** @class */ (function (_super) {
     }
     JSSceneView.prototype.clone = function (parent) { return null; };
     JSSceneView.prototype.toString = function () { return "JSSceneView"; };
-    JSSceneView.prototype.getRatio = function () {
+    JSSceneView.prototype.parentScale = function () {
         var div = this.getElement();
-        return Math.min(screen.width, screen.height) / Math.min(div.clientWidth, div.clientHeight) * 2;
+        var scale = Math.min(div.clientWidth, div.clientHeight) / Math.min(screen.width, screen.height) * 2;
+        return scale;
     };
+    JSSceneView.prototype.getScale = function (pos) { return pos.scale; };
     JSSceneView.prototype.parentWidth = function () { return this.getElement().parentElement.offsetWidth; };
     JSSceneView.prototype.parentHeight = function () { return this.getElement().parentElement.offsetHeight; };
     JSSceneView.prototype.updatePosition = function (pos, elt) {
@@ -2071,3 +2083,6 @@ var INScoreGlue = /** @class */ (function () {
     return INScoreGlue;
 }());
 var gGlue = new INScoreGlue();
+// default function to show the log window (if any)
+// should be overriden by client applications
+function showlog(status) { }
