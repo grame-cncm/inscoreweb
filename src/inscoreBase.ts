@@ -11,10 +11,11 @@ class INScoreDiv {
 	}
 }
 
-interface IGlue {
-	start():Promise<any>;
-}
+interface IGlue { start():Promise<any>; }
+interface ShowLogFunction { (state: boolean): void; }
+
 declare var gGlue: IGlue;
+declare var showlog: ShowLogFunction;
 
 //----------------------------------------------------------------------------
 class INScoreBase {
@@ -78,16 +79,6 @@ class INScoreBase {
 	
     //------------------------------------------------------------------------
 	// initialization
-    // async initialise():Promise<any> { 
-    //     var module = INScoreModule();
-    //     return new Promise( (success: any, failure: any) => {
-    //         module['onRuntimeInitialized'] = () => {
-    //             this.moduleInit (module);
-    //             success ( this ); 
-    //             }
-    //     });
-	// }
-	
 	async start () : Promise<any> {
 		return new Promise( (success: any, failure: any) => {
 			gGlue.start().then (() => { this.initialise(); success(this) });
@@ -111,10 +102,11 @@ class INScoreBase {
 		let content = div.innerText;
 		div.innerText = "";
 		if (content.length) {
-			if (v2)
-				inscore.loadInscore2 (content);
-			else
-				inscore.loadInscore (content, false);
+			this.loadInscore (content, v2);
+			// if (v2)
+			// 	inscore.loadInscore2 (content);
+			// else
+			// 	inscore.loadInscore (content, false);
 		}
 	}
 
@@ -126,24 +118,31 @@ class INScoreBase {
 		return { name: name, ext: ext }	
 	}
 
+	loadInscore(content: string, v2: boolean) : void {
+		let status = false;
+		if (v2)
+			status = inscore.loadInscore2 (content);
+		else
+			status = inscore.loadInscore (content, v2);
+		if (!status) showlog(true);
+	}
+
 
     //------------------------------------------------------------------------
     // load an inscore file - called when an inscore file is dropped
 	loadFromFile (content: string, v2: boolean, name: string) : void {
-		if (v2)
-			inscore.loadInscore2 (content);
-		else
-			inscore.loadInscore (content, true);
+		this.loadInscore (content, v2);
 	}
     //------------------------------------------------------------------------
     // load an inscore script - called when text is dropped
 	loadFromText (content: string, v2: boolean) : void {
-		inscore.loadInscore (content, true);
+		this.loadInscore (content, true);
+		// if (!inscore.loadInscore (content, true)) showlog(true);
 	}
 
     //------------------------------------------------------------------------
     // load an inscore file
-	loadInscore(file: File, v2: boolean) : void {
+	fetchInscore (file: File, v2: boolean) : void {
 		let reader = new FileReader();				
 		reader.readAsText (file);
 		reader.onloadend = (event) => { this.loadFromFile (reader.result.toString(), v2, file.name)};
@@ -217,9 +216,9 @@ class INScoreBase {
 			const properties = this.getFileProperties(fileName);
 			let type = this.fExtHandlers[properties.ext];
 			switch (type) {
-				case kInscore: 	this.loadInscore (file, false);
+				case kInscore: 	this.fetchInscore (file, false);
 					break;
-				case kInscore2: this.loadInscore (file, true);
+				case kInscore2: this.fetchInscore (file, true);
 					break;
 				default:		this.loadFile (file, fileName, type, <HTMLElement>e.target);
 					break;
@@ -230,7 +229,6 @@ class INScoreBase {
 	drop( e : DragEvent) : void {
 		let data = e.dataTransfer.getData("Text");
 		if (data)	this.loadFromText (data, true);
-		// if (data)	inscore.loadInscore(data, false);
 		else 		this.filedropped (e);
 		let div = <HTMLElement>e.target;
 		div.style.border = div.getAttribute('savedborder');

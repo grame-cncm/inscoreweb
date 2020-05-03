@@ -10,3 +10,10 @@ glue.start().then (() => {
 	editor.initialize();
 	$("#version").text( inscore.versionStr() ); 
 } );
+
+var showlog = function(status: boolean) {
+	if (status)
+		$("#lognav").click();
+	else
+		$("#editornav").click();
+}
