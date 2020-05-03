@@ -1,8 +1,6 @@
 
 ///<reference path="inscoreBase.ts"/>
 ///<reference path="editor.ts"/>
-///<reference path="TLog.ts"/>
-
 
 interface KeyHandler { (event: KeyboardEvent) : void }
 
@@ -20,6 +18,7 @@ class EditorGlue extends INScoreBase {
     }
 
 
+	// load a script in an arbitrary div
 	loadScript(div: HTMLElement, script: string) : void {
 		let w = div.clientWidth;
 		let h = div.clientHeight;
