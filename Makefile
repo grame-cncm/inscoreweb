@@ -11,7 +11,7 @@ TSFOLDER := src
 TSLIB	 := $(TSFOLDER)/lib
 GUIDOTS := guidoengine.ts libGUIDOEngine.d.ts
 LXMLTS  := libmusicxml.ts libmusicxml.d.ts
-TSFILES := $(wildcard $(TSFOLDER)/*.ts)
+TSFILES := $(wildcard $(TSFOLDER)/*.ts) $(wildcard $(TSFOLDER)/*.js)
 
 CSS := $(wildcard css/*.css)
 
@@ -20,6 +20,7 @@ EXTFILES := node_modules/jquery/dist/jquery.js node_modules/bootstrap/dist/js/bo
 MINCSS   := $(CSSDIR)/inscore.min.css $(CSSDIR)/codemirror.min.css $(CSSDIR)/bootstrap.min.css
 GUIDONODE:= node_modules/@grame/guidolib
 LXMLNODE := node_modules/@grame/libmusicxml
+INSCOREJS ?= ../git/javascript
 
 .PHONY: examples
 
@@ -34,7 +35,7 @@ all:
 #	git checkout $(DIST)/CNAME
 
 test : 
-	@echo $(OUT)
+	@echo $(TSFILES)
 
 
 
@@ -64,6 +65,8 @@ $(DIST)/inscoreEditor.js : $(TSFILES)
 	cd $(TSFOLDER) && tsc
 
 libs: $(LIBDIR) $(DIST)/lib/extern.min.js
+	cp $(INSCOREJS)/lib/libINScore.js 	$(LIBDIR)
+	cp $(INSCOREJS)/lib/libINScore.wasm $(LIBDIR)
 	cp $(GUIDONODE)/libGUIDOEngine.js 	$(LIBDIR)
 	cp $(GUIDONODE)/libGUIDOEngine.wasm $(LIBDIR)
 	cp $(LXMLNODE)/libmusicxml.js 		$(LIBDIR)
