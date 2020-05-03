@@ -4,8 +4,11 @@ y =-0.2;
 
 /ITL/scene/*  del;
 
+url = "https://inscoreweb.grame.fr/";
+
 /ITL/scene/title  set  txt "Variables in interaction messages.";
 /ITL/scene/title  fontSize 26;
+/ITL/scene/title  fontWeight bold;
 /ITL/scene/title  color darkBlue;
 /ITL/scene/title  y -0.80;
 
@@ -16,8 +19,8 @@ y =-0.2;
 /ITL/scene/rect  y  $y;
 /ITL/scene/rect  z  1.0;
 
-/ITL/scene/rep1  set  img "https://inscoreweb.grame.fr/imgs/repere.png";
-/ITL/scene/rep2  set  img "https://inscoreweb.grame.fr/imgs/repere.png";
+/ITL/scene/rep1  set  img $url + "imgs/repere.png";
+/ITL/scene/rep2  set  img $url + "imgs/repere.png";
 /ITL/scene/rep2  x  $x;
 /ITL/scene/rep2  y  $y;
 
@@ -31,10 +34,10 @@ y =-0.2;
 /ITL/scene/vapos  set  txt " ";
 /ITL/scene/vspos  set  txt " ";
 /ITL/scene/vdate  set  txt " ";
-/ITL/scene/v*{pos,date}  xorigin  -1.2;
+/ITL/scene/v*{pos,date}  xorigin  -1.0;
 /ITL/scene/v*{pos,date}  color  0 0 255;
 
-/ITL/scene/*{pos,date}  scale  1.2;
+/ITL/scene/*{pos,date}  scale  1.4;
 /ITL/scene/[tv]pos  y  0.4;
 /ITL/scene/[tv]apos  y  0.5;
 /ITL/scene/[tv]spos  y  0.6;
