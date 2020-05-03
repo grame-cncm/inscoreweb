@@ -46,6 +46,34 @@ html, body {
     margin-right: auto 
 }
 
+@keyframes wait {
+	from {scale: 30%;}
+	to 	 {scale: 60%;}
+}
+#loading {
+	display: block;
+	margin: auto;
+	position: absolute;
+	top:0;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	scale: 50%;
+	animation-name: wait;
+	animation-duration: 2s;
+	animation-direction: alternate;
+	animation-iteration-count: infinite;
+	animation-timing-function: ease;
+	z-index: 1;
+}
+
+/* #loading {
+	position: absolute;
+	top: calc(50% - 180px);
+	left: calc(50% - 200px);
+	scale: 50%;
+} */
+
  .toolbar-left 	{ 
 	text-align: left;
 	padding-left: 10px;

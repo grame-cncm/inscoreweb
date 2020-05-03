@@ -11867,6 +11867,7 @@ glue.start().then(function () {
     editor = new InscoreEditor("code");
     editor.initialize();
     $("#version").text(inscore.versionStr());
+    setTimeout(function () { return $("#loading").remove(); }, 1000);
 });
 var showlog = function (status) {
     if (status)

@@ -9,6 +9,7 @@ glue.start().then (() => {
 	editor = new InscoreEditor("code"); 
 	editor.initialize();
 	$("#version").text( inscore.versionStr() ); 
+	setTimeout (() => $("#loading").remove(), 1000);
 } );
 
 var showlog = function(status: boolean) {
