@@ -4,20 +4,6 @@
 ///<reference path="TLog.ts"/>
 
 
-//----------------------------------------------------------------------------
-// log support
-//----------------------------------------------------------------------------
-class inscoreLog extends TLog {
-	log  (msg: string): void {
-		document.getElementById("logs").textContent += msg + "\n";
-	}
-
-	error(msg: string): void {
-		document.getElementById("logs").textContent += msg + "\n";
-	}
-
-}
-
 interface KeyHandler { (event: KeyboardEvent) : void }
 
 //----------------------------------------------------------------------------
@@ -28,7 +14,6 @@ class EditorGlue extends INScoreBase {
 	fKeyHandler : KeyHandler;
 
 	constructor() {
-		gLog = new inscoreLog();
 		super();
 		$("#fullscreen").click		( (event) => { this.loadPreview() }); 
 		this.fKeyHandler = this.closePreview;
