@@ -1,0 +1,345 @@
+
+
+/ITL/scene/* del;
+
+
+url = "hhtps://inscoreweb.grame.fr/imgs/jeu/";
+
+/ITL/scene/title set txt 'Jeu est un autre';
+/ITL/scene/title fontFamily Arial;
+/ITL/scene/title fontSize 40;
+/ITL/scene/title y -0.85;
+/ITL/scene/title watch mouseDown (/ITL browse 'hhtps://inscoreweb.grame.fr/rsrc/JEUestUNautre.pdf');
+/ITL/scene/title watch mouseEnter (/ITL/scene/$self color blue);
+/ITL/scene/title watch mouseLeave (/ITL/scene/$self color back);
+
+/ITL/scene/author set txt 'Vincent-Raphaël Carinola, 2016';
+/ITL/scene/author fontFamily Arial;
+/ITL/scene/author fontSize 12;
+/ITL/scene/author y 0.9;
+/ITL/scene/author x 0.70;
+/ITL/scene/author watch mouseDown (/ITL browse 'https://www.vrcarinola.com/');
+/ITL/scene/author watch mouseEnter (/ITL/scene/$self color blue);
+/ITL/scene/author watch mouseLeave (/ITL/scene/$self color back);
+
+
+/ITL/scene/g1 set img $url + "Graphic1.png";
+/ITL/scene/g2 set img $url + "Graphic4.png";
+/ITL/scene/g3 set img $url + "Graphic3.png";
+/ITL/scene/g4 set img $url + "Graphic2.png";
+/ITL/scene/g* scale 0.5;
+
+/ITL/scene/g5 set img $url + "Graphic5.png";
+/ITL/scene/g* alpha 40;
+
+w = 1.8;
+h = 1.4;
+/ITL/scene/a1 set arc $w $h 45 90;
+/ITL/scene/a2 set arc $w $h 150 60;
+/ITL/scene/a3 set arc $w $h 225 90;
+/ITL/scene/a4 set arc $w $h 330 60;
+/ITL/scene/a* penStyle dash;
+
+w = 0.6;
+/ITL/scene/l1 set line wa $w 30;
+/ITL/scene/l2 set line wa $w 150;
+/ITL/scene/l3 set line wa $w 210;
+/ITL/scene/l4 set line wa $w 330;
+/ITL/scene/l[14] xorigin -1.2;
+/ITL/scene/l[23] xorigin 1.2;
+/ITL/scene/l[12] yorigin -1.2;
+/ITL/scene/l[34] yorigin 1.2;
+/ITL/scene/l* penStyle solid;
+/ITL/scene/l* penWidth 1.5;
+/ITL/scene/l* penColor 150 150 150;
+
+/ITL/scene/t1 set txt "sculpture";
+/ITL/scene/t2 set txt "zébrure";
+/ITL/scene/t3 set txt "texture";
+/ITL/scene/t4 set txt "allure";
+/ITL/scene/t5 set txt "tournure";
+/ITL/scene/t6 set txt "murmure";
+
+/ITL/scene/g[13] x -0.69;
+/ITL/scene/g[24] x  0.69;
+/ITL/scene/g[12] y -0.42;
+/ITL/scene/g[34] y  0.42;
+
+/ITL/scene/t[13] x -0.7;
+/ITL/scene/t[24] x  0.7;
+/ITL/scene/t[12] y -0.54;
+/ITL/scene/t[34] y  0.3;
+/ITL/scene/t5 y -0.17;
+/ITL/scene/t6 y 0.62;
+
+/ITL/scene/t* fontFamily Arial;
+/ITL/scene/t* fontStyle italic;
+/ITL/scene/t* fontWeight bold;
+
+cursorColor = 0 0 0;
+/ITL/scene/cursor set ellipse 0.05 0.05;
+/ITL/scene/cursor color $cursorColor;
+/ITL/scene/cursor show 0;
+
+/ITL/scene/progress set rect 0.5 0.05;
+/ITL/scene/progress color 220 220 220 150;
+/ITL/scene/progress show 0;
+
+w = 0.45;
+/ITL/scene/p13 set ellipse $w $w;
+/ITL/scene/p13 brushStyle none;
+/ITL/scene/p13 penWidth 1;
+/ITL/scene/p13 penColor 200 200 200;
+/ITL/scene/p13 angle 90;
+/ITL/scene/p13 show 0;
+
+#################################################
+# 
+#   Events
+#
+#################################################
+
+tempo 	= 300;
+dunit 	= 16;
+alpha 	= 40;
+
+#################################################
+# 
+#   single node events 
+#   events P1 to P4
+#
+#################################################
+stopprogress = (
+		/ITL/scene/progress show 0,			# hide the cursor
+		/ITL/scene/cursor tempo 0,			# set the tempo to 0
+		/ITL/scene/sync progress,			# remove any synchronization
+		/ITL/scene/cursor watch,			# remove any watched event
+		/ITL/scene/g* alpha $alpha			# and reset the alpha channel
+);
+
+/ITL/scene watch PROGRESS (
+	/ITL/scene/cursor 	show 0,				# hide the cursor
+	/ITL/scene/p13 		show 0,
+	/ITL/scene/progress show 0,
+	/ITL/scene/progress duration 0,
+	/ITL/scene/sync progress,				# remove any previous synchronisation
+	/ITL/scene/sync progress '$1' hv,	
+	/ITL/scene/cursor tempo 0,
+	/ITL/scene/cursor watch,
+	/ITL/scene/cursor date 0,
+	/ITL/scene/cursor watch ddate ( /ITL/scene/progress duration '$date'),
+	/ITL/scene/cursor watch timeLeave 0 $dunit '$3' $dunit $stopprogress,
+	/ITL/scene/cursor tempo '$2'
+);
+
+/ITL/scene watch P1 (
+	/ITL/scene/g* alpha $alpha,
+	/ITL/scene/g1 duration '$1' $dunit,
+	/ITL/scene/g1 alpha 255,
+	/ITL/scene event PROGRESS g1 $tempo '$1'
+);
+
+/ITL/scene watch P2 (
+	/ITL/scene/g* alpha $alpha,
+	/ITL/scene/g2 duration '$1' $dunit,
+	/ITL/scene/g2 alpha 255,
+	/ITL/scene event PROGRESS g2 $tempo '$1'
+);
+
+/ITL/scene watch P3 (
+	/ITL/scene/g* alpha $alpha,
+	/ITL/scene/g4 duration '$1' $dunit,
+	/ITL/scene/g4 alpha 255,
+	/ITL/scene event PROGRESS g4 $tempo '$1'
+);
+
+/ITL/scene watch P4 (
+	/ITL/scene/g* alpha $alpha,
+	/ITL/scene/g3 duration '$1' $dunit,
+	/ITL/scene/g3 alpha 255,
+	/ITL/scene event PROGRESS g3 $tempo '$1'
+);
+
+
+#################################################
+# 
+#   transitions between nodes 
+#   events P5 to P12
+#
+#################################################
+stopcursor = (
+	/ITL/scene/cursor 	show 0,			# hide the cursor
+	/ITL/scene/p13 		show 0,
+	/ITL/scene/cursor 	tempo 0,		# set the tempo to 0
+	/ITL/scene/sync 	cursor,			# remove any synchronization
+	/ITL/scene/cursor 	watch			# and remove any watched event
+);
+
+/ITL/scene watch SYNC (
+	/ITL/scene/p13 		show 0,			    # hides P13 sync
+	/ITL/scene/progress show 0,				# hides P1-4 sync
+	/ITL/scene/g* alpha $alpha,				# remove any previous synchronization
+	/ITL/scene/sync cursor,					# remove any previous synchronization
+	/ITL/scene/cursor watch,				# remove any previous watched event
+	/ITL/scene/cursor show 1,				# show the cursor
+	/ITL/scene/sync cursor '$1' syncFrame,  # synchronize to the new master
+	/ITL/scene/cursor date 0,
+	/ITL/scene/cursor watch timeLeave 0 $dunit '$3' $dunit $stopcursor,
+	/ITL/scene/cursor tempo '$2'
+);
+
+/ITL/scene watch P5 (
+	/ITL/scene/a3 rotatey 0,
+	/ITL/scene/a3 duration '$1' $dunit,
+	/ITL/scene event SYNC a3 $tempo '$1'
+);
+
+/ITL/scene watch P6 (
+	/ITL/scene/a3 rotatey 180,
+	/ITL/scene/a3 duration '$1' $dunit,
+	/ITL/scene event SYNC a3 $tempo '$1'
+);
+
+/ITL/scene watch P7 (
+	/ITL/scene/a2 rotatex 0,
+	/ITL/scene/a2 duration '$1' $dunit,
+	/ITL/scene event SYNC a2 $tempo '$1'
+);
+
+/ITL/scene watch P8 (
+	/ITL/scene/a2 rotatex 180,
+	/ITL/scene/a2 duration '$1' $dunit,
+	/ITL/scene event SYNC a2 $tempo '$1'
+);
+
+/ITL/scene watch P9 (
+	/ITL/scene/a1 rotatey 0,
+	/ITL/scene/a1 duration '$1' $dunit,
+	/ITL/scene event SYNC a1 $tempo '$1'
+);
+
+/ITL/scene watch P10 (
+	/ITL/scene/a1 rotatey 180,
+	/ITL/scene/a1 duration '$1' $dunit,
+	/ITL/scene event SYNC a1 $tempo '$1'
+);
+
+/ITL/scene watch P11 (
+	/ITL/scene/a4 rotatex 0,
+	/ITL/scene/a4 duration '$1' $dunit,
+	/ITL/scene event SYNC a4 $tempo '$1'
+);
+
+/ITL/scene watch P12 (
+	/ITL/scene/a4 rotatex 180,
+	/ITL/scene/a4 duration '$1' $dunit,
+	/ITL/scene event SYNC a4 $tempo '$1'
+);
+
+#################################################
+# 
+#   central event 
+#   event P13
+#
+#################################################
+
+/ITL/scene watch POST13 (
+	/ITL/scene/g5 alpha 255,
+	/ITL/scene/p13 show 1
+);
+
+/ITL/scene watch P13 (
+	/ITL/scene/g5 alpha 255,
+	/ITL/scene/p13 duration '$1' $dunit,
+	/ITL/scene event SYNC p13 $tempo '$1',
+	/ITL/scene event POST13
+);
+
+
+#########################################################
+# This part is intended for a stand-alone rendering of the score
+# It is based on an object named 'time' that behaves like a conductor
+# 'time' watch time intervals and generates events similar to those generated by Max/MSP 
+# 
+# The main difference lies in the random aspects of the score: with this version, 
+# events are pre-defined and static. And after a while, the score loops to the beginning.
+#
+# Note that when events are fired, a trace is also generated in the log window
+#
+
+
+#########################################################
+# create the time object
+/ITL/scene/time set txt time;
+/ITL/scene/time show 0;
+
+#########################################################
+# pre-defined events durations
+d1 = 200;
+d2 = 150;
+d3 = 100;
+d4 = 50;
+d5 = 150;
+d6 = 50;
+d7 = 50;
+d8 = 80;
+d9 = 140;
+d10 = 80;
+d11 = 40;
+d12 = 60;
+
+#########################################################
+# a user defined MOVE event: takes an event name and a 
+# duration as arguments
+# It triggers the event but also write the event to the log window
+/ITL/scene/time watch MOVE ( /ITL/scene event '$1' '$2', /ITL/log write event '$1' '$2' );
+
+#########################################################
+# the time events definitions
+t1 = 4;				# the start date (actually a bit after 0)
+t2 = $t1 + $d2;		# 't2' represents the time interval right boundary
+/ITL/scene/time watch timeEnter $t1 $dunit $t2 $dunit ( /ITL/scene/time event MOVE P13 $d1 );
+t1 = $t2;
+t2 = $t1 + $d2;
+/ITL/scene/time watch timeEnter $t1 $dunit $t2 $dunit (/ITL/scene/time event MOVE P5 $d2 );
+t1 = $t2;
+t2 = $t1 + $d3;
+/ITL/scene/time watch timeEnter $t1 $dunit $t2 $dunit (/ITL/scene/time event MOVE P4 $d3 );
+t1 = $t2;
+t2 = $t1 + $d4;
+/ITL/scene/time watch timeEnter $t1 $dunit $t2 $dunit (/ITL/scene/time event MOVE P7 $d4 );
+t1 = $t2;
+t2 = $t1 + $d5;
+/ITL/scene/time watch timeEnter $t1 $dunit $t2 $dunit (/ITL/scene/time event MOVE P1 $d5 );
+t1 = $t2;
+t2 = $t1 + $d6;
+/ITL/scene/time watch timeEnter $t1 $dunit $t2 $dunit (/ITL/scene/time event MOVE P8 $d6 );
+t1 = $t2;
+t2 = $t1 + $d7;
+/ITL/scene/time watch timeEnter $t1 $dunit $t2 $dunit (/ITL/scene/time event MOVE P4 $d7 );
+t1 = $t2;
+t2 = $t1 + $d8;
+/ITL/scene/time watch timeEnter $t1 $dunit $t2 $dunit (/ITL/scene/time event MOVE P6 $d8 );
+t1 = $t2;
+t2 = $t1 + $d9;
+/ITL/scene/time watch timeEnter $t1 $dunit $t2 $dunit (/ITL/scene/time event MOVE P3 $d9 );
+t1 = $t2;
+t2 = $t1 + $d10;
+/ITL/scene/time watch timeEnter $t1 $dunit $t2 $dunit (/ITL/scene/time event MOVE P2 $d10 );
+t1 = $t2;
+t2 = $t1 + $d11;
+/ITL/scene/time watch timeEnter $t1 $dunit $t2 $dunit (/ITL/scene/time event MOVE P10 $d11 );
+t1 = $t2;
+t2 = $t1 + $d12;
+/ITL/scene/time watch timeEnter $t1 $dunit $t2 $dunit (/ITL/scene/time event MOVE P1 $d12 );
+
+#########################################################
+# this is where the whole system loops
+t1 = $t2;
+t2 = $t1 + 1;
+/ITL/scene/time watch timeEnter $t1 $dunit $t2 $dunit (/ITL/scene/time date 0 );
+
+#########################################################
+# and finaly active the 'time' tempo (actually start rendering)
+/ITL/scene/time  tempo $tempo;
+
