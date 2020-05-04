@@ -219,12 +219,13 @@ var JSObjectView = /** @class */ (function () {
     };
     JSObjectView.prototype.getScale = function (pos) { return pos.scale * this.parentScale(); };
     // the ratio applied in synchronisation mode to preserve the slave proportions
-    JSObjectView.prototype.getSyncRatio = function () {
+    JSObjectView.prototype.parentSyncRatio = function () {
         var div = this.getElement();
         if (div && div.parentElement)
             return Math.min(div.clientWidth, div.offsetHeight) / Math.min(div.parentElement.offsetWidth, div.parentElement.offsetHeight);
         return 1;
     };
+    JSObjectView.prototype.getSyncRatio = function () { return this.getParent().parentSyncRatio(); };
     JSObjectView.prototype.refresh = function (address) {
         inscore.delayMessage(address, inscore.newMessageM("refresh"));
     };
@@ -244,7 +245,7 @@ var JSObjectView = /** @class */ (function () {
                 return;
         var infos = obj.getUpdateInfos(master);
         if (keepRatio) {
-            var r = this.getParent().getSyncRatio();
+            var r = this.getSyncRatio();
             infos.position.scale /= r;
         }
         if (infos.updatecolor)
@@ -275,8 +276,9 @@ var JSObjectView = /** @class */ (function () {
     };
     JSObjectView.prototype.getPos = function (pos) {
         var ppos = this.getParent().getOrigin();
-        var x = ppos.x + this.relative2SceneWidth(pos.x) - (this.getElement().offsetWidth * (1 + pos.xorigin * pos.scale) / 2);
-        var y = ppos.y + this.relative2SceneHeight(pos.y) - (this.getElement().offsetHeight * (1 + pos.yorigin * pos.scale) / 2);
+        var scale = this.getScale(pos);
+        var x = ppos.x + this.relative2SceneWidth(pos.x) - (this.getElement().offsetWidth * (1 + pos.xorigin * scale) / 2);
+        var y = ppos.y + this.relative2SceneHeight(pos.y) - (this.getElement().offsetHeight * (1 + pos.yorigin * scale) / 2);
         return { x: x, y: y };
     };
     JSObjectView.prototype.updatePosition = function (pos, elt) {
@@ -738,7 +740,7 @@ var JSEllipseView = /** @class */ (function (_super) {
     };
     return JSEllipseView;
 }(JSSvgBase));
-///<reference path="lib/libGUIDOEngine.d.ts"/>
+///<reference path="libGUIDOEngine.d.ts"/>
 //----------------------------------------------------------------------------
 // GUIDOEngine interface
 //----------------------------------------------------------------------------
@@ -959,7 +961,7 @@ var PianoRollLineMode;
     PianoRollLineMode[PianoRollLineMode["kPRNoLine"] = -1] = "kPRNoLine";
 })(PianoRollLineMode || (PianoRollLineMode = {}));
 ///<reference path="JSSVGBase.ts"/>
-///<reference path="guidoengine.ts"/>
+///<reference path="lib/guidoengine.ts"/>
 var JSGMNView = /** @class */ (function (_super) {
     __extends(JSGMNView, _super);
     function JSGMNView(parent, guido) {
@@ -1274,6 +1276,14 @@ var JSHtmlView = /** @class */ (function (_super) {
         this.setFont(obj.getTextInfos());
     };
     JSHtmlView.prototype.getText = function (infos) { return infos.text; };
+    JSHtmlView.prototype.updateEvents = function (events, dest) {
+        _super.prototype.updateEvents.call(this, events, dest);
+        var div = this.getElement();
+        if (events.watchMouseEnter || events.watchMouseDown || events.watchMouseDClick)
+            this.getElement().style.cursor = "pointer";
+        else
+            this.getElement().style.cursor = "default";
+    };
     JSHtmlView.prototype.updateSpecial = function (obj, objid) {
         var infos = obj.getTextInfos();
         this.getElement().innerHTML = this.getText(infos);
@@ -1320,11 +1330,15 @@ var JSImageView = /** @class */ (function (_super) {
         _this.getElement().className = "inscore-img";
         return _this;
     }
-    JSImageView.prototype.clone = function (parent) { return new JSImageView(parent); };
-    JSImageView.prototype.toString = function () { return "JSImageView"; };
-    JSImageView.prototype.getAutoSize = function () {
-        return { x: this.fImage.clientWidth, y: this.fImage.clientHeight };
+    JSImageView.prototype.clone = function (parent) {
+        var img = new JSImageView(parent);
+        img.fImage.src = this.fImage.src;
+        return img;
     };
+    JSImageView.prototype.updateDimensions = function (pos) { }; // don't update image dimensions (use scale)
+    JSImageView.prototype.toString = function () { return "JSImageView"; };
+    JSImageView.prototype.getSyncRatio = function () { return 1; }; // no scaling for images, appearance is already preserved 
+    JSImageView.prototype.getAutoSize = function () { return { x: this.fImage.clientWidth, y: this.fImage.clientHeight }; };
     JSImageView.prototype.updateSpecial = function (obj, objid) {
         this.fImage.src = obj.getFile();
         return _super.prototype.updateSpecial.call(this, obj, objid);
@@ -1690,7 +1704,7 @@ var JSVideoView = /** @class */ (function (_super) {
     };
     return JSVideoView;
 }(JSAutoSize));
-///<reference path="lib/libmusicxml.d.ts"/>
+///<reference path="libmusicxml.d.ts"/>
 //----------------------------------------------------------------------------
 // the libMusicXML interface
 //----------------------------------------------------------------------------
@@ -1729,7 +1743,7 @@ var libmusicxml = /** @class */ (function () {
     return libmusicxml;
 }());
 ///<reference path="JSGMNView.ts"/>
-///<reference path="libmusicxml.ts"/>
+///<reference path="lib/libmusicxml.ts"/>
 var JSXMLView = /** @class */ (function (_super) {
     __extends(JSXMLView, _super);
     function JSXMLView(parent, xmllib, guido) {
@@ -1887,8 +1901,8 @@ var TSyncManager = /** @class */ (function () {
     };
     return TSyncManager;
 }());
-///<reference path="guidoengine.ts"/>
-///<reference path="libmusicxml.ts"/>
+///<reference path="lib/guidoengine.ts"/>
+///<reference path="lib/libmusicxml.ts"/>
 //----------------------------------------------------------------------------
 var libraries = /** @class */ (function () {
     function libraries() {
@@ -2096,3 +2110,9 @@ var gGlue = new INScoreGlue();
 // default function to show the log window (if any)
 // should be overriden by client applications
 function showlog(status) { }
+// glue functions
+// should be overriden by client applications
+function showMouse(state) { }
+function openUrl(url) {
+    window.open(url);
+}

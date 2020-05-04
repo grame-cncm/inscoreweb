@@ -298,10 +298,6 @@ var INScoreBase = /** @class */ (function () {
         div.innerText = "";
         if (content.length) {
             this.loadInscore(content, v2);
-            // if (v2)
-            // 	inscore.loadInscore2 (content);
-            // else
-            // 	inscore.loadInscore (content, false);
         }
     };
     //------------------------------------------------------------------------
@@ -312,13 +308,10 @@ var INScoreBase = /** @class */ (function () {
         return { name: name, ext: ext };
     };
     INScoreBase.prototype.loadInscore = function (content, v2) {
-        var status = false;
         if (v2)
-            status = inscore.loadInscore2(content);
+            inscore.loadInscore2(content);
         else
-            status = inscore.loadInscore(content, v2);
-        if (!status)
-            showlog(true);
+            inscore.loadInscore(content, v2);
     };
     //------------------------------------------------------------------------
     // load an inscore file - called when an inscore file is dropped
@@ -329,7 +322,6 @@ var INScoreBase = /** @class */ (function () {
     // load an inscore script - called when text is dropped
     INScoreBase.prototype.loadFromText = function (content, v2) {
         this.loadInscore(content, true);
-        // if (!inscore.loadInscore (content, true)) showlog(true);
     };
     //------------------------------------------------------------------------
     // load an inscore file
