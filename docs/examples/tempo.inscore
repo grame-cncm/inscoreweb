@@ -60,7 +60,3 @@ tempo	= 120;
 # and finally start 
 /ITL/scene/cursor tempo $tempo;
 
-__END__
-/ITL/scene/cursor tempo 0;
-/ITL/scene/cursor date 0;
-/ITL/scene/sync cursor;

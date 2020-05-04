@@ -81,9 +81,3 @@ w = 0.09;
 	)
 );
 
-
-__END__
-
-/ITL/scene refresh;
-/ITL/log show 1;
-/ITL/log level 2;
