@@ -3,7 +3,7 @@
 /ITL/scene/* del;
 
 
-url = "hhtps://inscoreweb.grame.fr/imgs/jeu/";
+url = "https://inscoreweb.grame.fr/imgs/jeu/";
 
 /ITL/scene/title set txt 'Jeu est un autre';
 /ITL/scene/title fontFamily Arial;
