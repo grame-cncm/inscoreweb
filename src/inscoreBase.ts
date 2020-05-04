@@ -12,10 +12,7 @@ class INScoreDiv {
 }
 
 interface IGlue { start():Promise<any>; }
-interface ShowLogFunction { (state: boolean): void; }
-
 declare var gGlue: IGlue;
-declare var showlog: ShowLogFunction;
 
 //----------------------------------------------------------------------------
 class INScoreBase {
@@ -103,10 +100,6 @@ class INScoreBase {
 		div.innerText = "";
 		if (content.length) {
 			this.loadInscore (content, v2);
-			// if (v2)
-			// 	inscore.loadInscore2 (content);
-			// else
-			// 	inscore.loadInscore (content, false);
 		}
 	}
 
@@ -119,12 +112,10 @@ class INScoreBase {
 	}
 
 	loadInscore(content: string, v2: boolean) : void {
-		let status = false;
 		if (v2)
-			status = inscore.loadInscore2 (content);
+			inscore.loadInscore2 (content);
 		else
-			status = inscore.loadInscore (content, v2);
-		if (!status) showlog(true);
+			inscore.loadInscore (content, v2);
 	}
 
 
@@ -137,7 +128,6 @@ class INScoreBase {
     // load an inscore script - called when text is dropped
 	loadFromText (content: string, v2: boolean) : void {
 		this.loadInscore (content, true);
-		// if (!inscore.loadInscore (content, true)) showlog(true);
 	}
 
     //------------------------------------------------------------------------
