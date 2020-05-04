@@ -9,7 +9,7 @@ url = "https://inscoreweb.grame.fr/imgs/jeu/";
 /ITL/scene/title fontFamily Arial;
 /ITL/scene/title fontSize 40;
 /ITL/scene/title y -0.85;
-/ITL/scene/title watch mouseDown (/ITL browse 'hhtps://inscoreweb.grame.fr/rsrc/JEUestUNautre.pdf');
+/ITL/scene/title watch mouseDown (/ITL browse 'https://inscoreweb.grame.fr/rsrc/JEUestUNautre.pdf');
 /ITL/scene/title watch mouseEnter (/ITL/scene/$self color blue);
 /ITL/scene/title watch mouseLeave (/ITL/scene/$self color back);
 
