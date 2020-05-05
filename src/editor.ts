@@ -13,7 +13,7 @@ class InscoreEditor {
 	constructor (divID: string) {
 		this.fEditor = CodeMirror.fromTextArea (<HTMLTextAreaElement>document.getElementById (divID), {
 			lineNumbers: true,
-			// mode: 'inscore',
+			mode: 'inscore',
 			theme: 'default',
 			smartIndent: true,
 			tabSize: 4,
