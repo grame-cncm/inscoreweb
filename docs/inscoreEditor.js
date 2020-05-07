@@ -311,7 +311,7 @@ var INScoreBase = /** @class */ (function () {
         if (v2)
             inscore.loadInscore2(content);
         else
-            inscore.loadInscore(content, v2);
+            inscore.loadInscore(content, true);
     };
     //------------------------------------------------------------------------
     // load an inscore file - called when an inscore file is dropped
@@ -321,7 +321,7 @@ var INScoreBase = /** @class */ (function () {
     //------------------------------------------------------------------------
     // load an inscore script - called when text is dropped
     INScoreBase.prototype.loadFromText = function (content, v2) {
-        this.loadInscore(content, true);
+        this.loadInscore(content, v2);
     };
     //------------------------------------------------------------------------
     // load an inscore file
@@ -409,7 +409,7 @@ var INScoreBase = /** @class */ (function () {
     INScoreBase.prototype.drop = function (e) {
         var data = e.dataTransfer.getData("Text");
         if (data)
-            this.loadFromText(data, true);
+            this.loadFromText(data, false);
         else
             this.filedropped(e);
         var div = e.target;
