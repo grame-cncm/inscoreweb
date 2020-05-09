@@ -46,10 +46,10 @@ html, body {
     margin-right: auto 
 }
 
-@-moz-keyframes 	wait { from {scale: 40%;} to {scale: 60%;} }
+/* @-moz-keyframes 	wait { from {scale: 40%;} to {scale: 60%;} }
 @-webkit-keyframes 	wait { from {scale: 40%;} to {scale: 60%;} }
 @-o-keyframes 		wait { from {scale: 40%;} to {scale: 60%;} }
-@keyframes 			wait { from {scale: 40%;} to {scale: 60%;} }
+@keyframes 			wait { from {scale: 40%;} to {scale: 60%;} } */
 
 #loading {
 	display: block;
@@ -60,11 +60,11 @@ html, body {
 	left: 0;
 	right: 0;
 	scale: 50%;
-	-webkit-animation: wait 2s ease infinite alternate;
+	/* -webkit-animation: wait 2s ease infinite alternate;
 	-moz-animation: wait 2s ease infinite alternate;
 	 -ms-animation: wait 2s ease infinite alternate;
 	  -o-animation: wait 2s ease infinite alternate;
-		 animation: wait 2s ease infinite alternate;
+		 animation: wait 2s ease infinite alternate; */
 
 	/* animation-name: wait;
 	animation-duration: 2s;
