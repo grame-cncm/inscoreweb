@@ -49,17 +49,12 @@ w = 0.09;
 /ITL/scene/p4 set ellipse $w $w;
 /ITL/scene/p4 color darkViolet;
 
-
 /ITL/scene/p* watch timeEnter 1 2 (/ITL/scene/$self date 0);
-
-#/ITL/scene/g1 set gmn "[ a f ]";
-
 
 /ITL/scene/sync p1 o1 syncFrame;
 /ITL/scene/sync p2 o2 syncFrame;
 /ITL/scene/sync p3 o3 syncFrame;
 /ITL/scene/sync p4 o4 syncFrame;
-
 
 /ITL/scene/control set txt "Play";
 /ITL/scene/control fontSize 20;
