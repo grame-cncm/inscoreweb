@@ -3,7 +3,8 @@
 <head>
 	<meta http-equiv="Content-Type" content="text/html;charset=utf-8" >
 	<link rel="shortcut icon" type="image/x-icon" href="imgs/favicon.ico" />
-
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	
 	<!-- <link href="css/inscore.css" rel="stylesheet"> -->
 	<link rel="stylesheet" href="font/fonts.css" />
 	<link rel="stylesheet" href="css/bootstrap.min.css">
@@ -56,7 +57,13 @@
     		<ul class="dropdown-menu multi-level" role="menu" aria-labelledby="dropdownMenu" id="tab-examples">
 			</ul>
 		</li>
-		<li><a href="https://inscore.grame.fr/doc/html/" target=_blank>Documentation</a></li>
+		<li class="dropdown">
+			<a class="dropdown-toggle" data-toggle="dropdown" href="#">Documentation<span class="caret"></span></a>
+			<ul class="dropdown-menu">
+				<li><a href="https://inscoredoc.grame.fr">INScore Language</a></li>
+				<li><a href="https://guidodoc.grame.fr">Guido Language</a></li>
+			</ul>
+		  </li>
 		</ul>
 	  </div>
 	  </div>
