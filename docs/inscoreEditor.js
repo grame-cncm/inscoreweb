@@ -11870,7 +11870,7 @@ glue.start().then(function () {
     setTimeout(function () { return $("#loading").remove(); }, 500);
     var ua = window.navigator.userAgent;
     var warnuser = (ua.indexOf('MSIE ') >= 0) || (ua.indexOf('Trident') >= 0) || (ua.indexOf('Edge') >= 0);
-    if (true)
+    if (warnuser)
         setTimeout(function () { return alert("WARNING!\nINScore JS doesn't work properly with Explorer or Edge.\nPreferably use Chrome or Firefox."); }, 700);
 });
 var showlog = function (status) {
