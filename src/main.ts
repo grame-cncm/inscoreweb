@@ -14,7 +14,7 @@ glue.start().then (() => {
 	setTimeout (() => $("#loading").remove(), 500);
 	var ua = window.navigator.userAgent;
 	let warnuser = (ua.indexOf('MSIE ') >= 0) || (ua.indexOf('Trident') >= 0) || (ua.indexOf('Edge') >= 0);
-	if (true)
+	if (warnuser)
 		setTimeout (() => alert("WARNING!\nINScore JS doesn't work properly with Explorer or Edge.\nPreferably use Chrome or Firefox."), 700);
 	
 } );
