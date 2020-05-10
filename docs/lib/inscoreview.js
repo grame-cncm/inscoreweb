@@ -1581,7 +1581,22 @@ var JSSVGfView = /** @class */ (function (_super) {
     };
     return JSSVGfView;
 }(JSSVGView));
+var Safari = false;
+var Explorer = false;
+var Edge = false;
+var Firefox = false;
+var Chrome = false;
+function scanNavigator() {
+    var ua = window.navigator.userAgent;
+    Chrome = (ua.indexOf('Chrome') >= 0);
+    Safari = (ua.indexOf('Safari') >= 0) && !Chrome;
+    Explorer = (ua.indexOf('MSIE ') >= 0) || (ua.indexOf('Trident') >= 0);
+    ;
+    Edge = (ua.indexOf('Edge') >= 0);
+    Firefox = (ua.indexOf('Firefox') >= 0);
+}
 ///<reference path="JSObjectView.ts"/>
+///<reference path="navigator.ts"/>
 //----------------------------------------------------------------------------
 var JSSceneView = /** @class */ (function (_super) {
     __extends(JSSceneView, _super);
@@ -1596,10 +1611,21 @@ var JSSceneView = /** @class */ (function (_super) {
         // for a yet unknown reason, removing the next line result in incorrect
         // children positionning (like if position becomes relative to the window)
         div.style.filter = "blur(0px)";
+        scanNavigator();
         return _this;
     }
     JSSceneView.prototype.clone = function (parent) { return null; };
     JSSceneView.prototype.toString = function () { return "JSSceneView"; };
+    JSSceneView.prototype.getOrigin = function () {
+        var p = _super.prototype.getOrigin.call(this);
+        // the browsers below don't compute children absolute position like Chrome or Firefox
+        if (Safari || Explorer || Edge) {
+            var div = this.getElement();
+            p.x += div.offsetLeft;
+            p.y += div.offsetTop;
+        }
+        return p;
+    };
     JSSceneView.prototype.parentScale = function () {
         var div = this.getElement();
         var scale = Math.min(div.clientWidth, div.clientHeight) / Math.min(screen.width, screen.height) * 2;
