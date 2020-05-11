@@ -460,6 +460,58 @@ var EditorGlue = /** @class */ (function (_super) {
         _this.fKeyHandler = _this.closePreview;
         return _this;
     }
+    //------------------------------------------------------------------------
+    // scan the current location to detect parameters
+    EditorGlue.prototype.scanOptions = function () {
+        var options = this.scanUrl();
+        var _loop_1 = function (i) {
+            var option = options[i].option;
+            var value = options[i].value;
+            console.log("scanOptions option: '" + option + "' value: '" + value + "'");
+            switch (option) {
+                case "code":
+                    editor.setInscore(atob(value));
+                    break;
+                case "src":
+                    oReq = new XMLHttpRequest();
+                    oReq.onload = function () { editor.setInscore(oReq.responseText, value); };
+                    oReq.open("get", value, true);
+                    oReq.send();
+                    break;
+                case "mode":
+                    if (value == "preview")
+                        $("#fullscreen").click();
+                    break;
+            }
+        };
+        var oReq;
+        for (var i = 0; i < options.length; i++) {
+            _loop_1(i);
+        }
+    };
+    //------------------------------------------------------------------------
+    // scan the current location to detect parameters
+    EditorGlue.prototype.scanUrl = function () {
+        var result = new Array();
+        var arg = window.location.search.substring(1);
+        var n = arg.indexOf("=");
+        while (n > 0) {
+            var option = arg.substr(0, n);
+            var remain = arg.substr(n + 1);
+            var next = remain.indexOf("?");
+            if (next > 0) {
+                var value = remain.substr(0, next);
+                result.push({ option: option, value: value });
+                arg = remain.substr(next + 1);
+                n = arg.indexOf("=");
+            }
+            else {
+                result.push({ option: option, value: remain });
+                break;
+            }
+        }
+        return result;
+    };
     // load a script in an arbitrary div
     EditorGlue.prototype.loadScript = function (div, script) {
         var _this = this;
@@ -11858,8 +11910,8 @@ var console = (function (oldCons) {
         }
     };
 }(window.console));
-///<reference path="editorGlue.ts"/>
 ///<reference path="editor.ts"/>
+///<reference path="editorGlue.ts"/>
 //------------------------------------------------------------------------
 var editor;
 var glue = new EditorGlue();
@@ -11867,6 +11919,7 @@ glue.start().then(function () {
     editor = new InscoreEditor("code");
     editor.initialize();
     $("#version").text(inscore.versionStr());
+    glue.scanOptions();
     setTimeout(function () { return $("#loading").remove(); }, 500);
     var ua = window.navigator.userAgent;
     var warnuser = (ua.indexOf('MSIE ') >= 0) || (ua.indexOf('Trident') >= 0) || (ua.indexOf('Edge') >= 0);
