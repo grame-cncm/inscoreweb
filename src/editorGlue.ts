@@ -23,27 +23,33 @@ class EditorGlue extends INScoreBase {
 	// scan the current location to detect parameters
 	scanOptions() : void	{
 		let options = this.scanUrl();
+		let preview = false;
+		for (let i=0; (i<options.length) && !preview; i++) {
+			if ((options[i].option == "mode") && (options[i].value == "preview"))
+				preview = true;
+		}
 		for (let i=0; i<options.length; i++) {
 			let option = options[i].option;
 			let value = options[i].value;
-			console.log ("scanOptions option: '" + option + "' value: '" + value + "'");
 			switch (option) {
 				case "code":
 					editor.setInscore (atob(value));
+					if (preview) $("#fullscreen").click();
+					preview = false;
 					break;
 				case "src":
 					var oReq = new XMLHttpRequest();
-					oReq.onload = () => { editor.setInscore( oReq.responseText, value); };
+					if (preview) oReq.onload = () => { editor.setInscore( oReq.responseText, value); $("#fullscreen").click(); };
+					else 		 oReq.onload = () => { editor.setInscore( oReq.responseText, value); };
 					oReq.open("get", value, true);
-					oReq.send();					
-					break;
-				case "mode":
-					if (value == "preview")
-						$("#fullscreen").click();
+					oReq.send();
+					preview = false;
 					break;
 			}
 		}
-	}
+		if (preview)
+			$("#fullscreen").click();
+}
 
 	//------------------------------------------------------------------------
 	// scan the current location to detect parameters

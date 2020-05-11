@@ -464,23 +464,30 @@ var EditorGlue = /** @class */ (function (_super) {
     // scan the current location to detect parameters
     EditorGlue.prototype.scanOptions = function () {
         var options = this.scanUrl();
+        var preview = false;
+        for (var i = 0; (i < options.length) && !preview; i++) {
+            if ((options[i].option == "mode") && (options[i].value == "preview"))
+                preview = true;
+        }
         var _loop_1 = function (i) {
             var option = options[i].option;
             var value = options[i].value;
-            console.log("scanOptions option: '" + option + "' value: '" + value + "'");
             switch (option) {
                 case "code":
                     editor.setInscore(atob(value));
+                    if (preview)
+                        $("#fullscreen").click();
+                    preview = false;
                     break;
                 case "src":
                     oReq = new XMLHttpRequest();
-                    oReq.onload = function () { editor.setInscore(oReq.responseText, value); };
+                    if (preview)
+                        oReq.onload = function () { editor.setInscore(oReq.responseText, value); $("#fullscreen").click(); };
+                    else
+                        oReq.onload = function () { editor.setInscore(oReq.responseText, value); };
                     oReq.open("get", value, true);
                     oReq.send();
-                    break;
-                case "mode":
-                    if (value == "preview")
-                        $("#fullscreen").click();
+                    preview = false;
                     break;
             }
         };
@@ -488,6 +495,8 @@ var EditorGlue = /** @class */ (function (_super) {
         for (var i = 0; i < options.length; i++) {
             _loop_1(i);
         }
+        if (preview)
+            $("#fullscreen").click();
     };
     //------------------------------------------------------------------------
     // scan the current location to detect parameters
