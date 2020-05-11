@@ -1,7 +1,6 @@
 
-///<reference path="editorGlue.ts"/>
 ///<reference path="editor.ts"/>
-
+///<reference path="editorGlue.ts"/>
 
 
 //------------------------------------------------------------------------
@@ -11,6 +10,8 @@ glue.start().then (() => {
 	editor = new InscoreEditor("code"); 
 	editor.initialize();
 	$("#version").text( inscore.versionStr() ); 
+	glue.scanOptions();
+
 	setTimeout (() => $("#loading").remove(), 500);
 	var ua = window.navigator.userAgent;
 	let warnuser = (ua.indexOf('MSIE ') >= 0) || (ua.indexOf('Trident') >= 0) || (ua.indexOf('Edge') >= 0);

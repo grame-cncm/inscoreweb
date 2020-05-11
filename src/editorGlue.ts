@@ -3,6 +3,7 @@
 ///<reference path="editor.ts"/>
 
 interface KeyHandler { (event: KeyboardEvent) : void }
+interface UrlOption  { option: string; value: string; }
 
 //----------------------------------------------------------------------------
 // a simple glue to inscore engine
@@ -17,6 +18,56 @@ class EditorGlue extends INScoreBase {
 		this.fKeyHandler = this.closePreview;
     }
 
+
+	//------------------------------------------------------------------------
+	// scan the current location to detect parameters
+	scanOptions() : void	{
+		let options = this.scanUrl();
+		for (let i=0; i<options.length; i++) {
+			let option = options[i].option;
+			let value = options[i].value;
+			console.log ("scanOptions option: '" + option + "' value: '" + value + "'");
+			switch (option) {
+				case "code":
+					editor.setInscore (atob(value));
+					break;
+				case "src":
+					var oReq = new XMLHttpRequest();
+					oReq.onload = () => { editor.setInscore( oReq.responseText, value); };
+					oReq.open("get", value, true);
+					oReq.send();					
+					break;
+				case "mode":
+					if (value == "preview")
+						$("#fullscreen").click();
+					break;
+			}
+		}
+	}
+
+	//------------------------------------------------------------------------
+	// scan the current location to detect parameters
+	scanUrl() : Array<UrlOption>	{
+		let result = new Array<UrlOption>();
+		let arg = window.location.search.substring(1);
+		let n = arg.indexOf("=");
+		while (n > 0) {
+			let option  = arg.substr(0,n);
+			let remain = arg.substr(n+1);
+			let next = remain.indexOf("?");
+			if (next > 0) {
+				let value = remain.substr(0,next);
+				result.push ( {option: option, value: value} );
+				arg = remain.substr(next + 1);
+				n = arg.indexOf("=");
+			}
+			else {
+				result.push ( {option: option, value: remain} );
+				break;
+			}
+		}
+		return result;
+	}
 
 	// load a script in an arbitrary div
 	loadScript(div: HTMLElement, script: string) : void {
@@ -62,6 +113,5 @@ class EditorGlue extends INScoreBase {
 		$("#scene").css( "opacity", 1 )
 		super.dragLeave (event);
 	}
-
 }
 
