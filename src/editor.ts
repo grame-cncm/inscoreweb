@@ -52,7 +52,7 @@ class InscoreEditor {
 			}
 		});
 
-		$("#font-family").change 	( (event) => { this.fEditor.getWrapperElement().style.fontFamily =  <string>$("#font-family").val(); } ); 
+		$("#font-family").change 	( (event) => { this.fEditor.getWrapperElement().style.fontFamily =  this.fontMenu2fontFamily(<string>$("#font-family").val()); } ); 
 		$("#font-size").change 		( (event) => { this.fEditor.getWrapperElement().style.fontSize =  $("#font-size").val() + "px"; } ); 
 		$("#etheme").change 		( (event) => { this.fEditor.setOption("theme", <string>$("#etheme").val()); } );
 		$("#wraplines").change 		( (event) => { this.fEditor.setOption("lineWrapping",  <boolean>$("#wraplines").is(":checked")); } );
@@ -62,19 +62,35 @@ class InscoreEditor {
 		$("#saveinscore").click		( (event) => { this.saveInscore(); });
 		$("#savehtml").click		( (event) => { this.saveHtml(); });
 		 
-		this.fEditor.getWrapperElement().style.fontFamily =  <string>$("#font-family").val();
+		this.fEditor.getWrapperElement().style.fontFamily =  this.fontMenu2fontFamily(<string>$("#font-family").val());
 		this.fEditor.getWrapperElement().style.fontSize   =  $("#font-size").val() + "px"; 
 		this.fEditor.setOption("theme", <string>$("#etheme").val());
 		this.fEditor.setOption("lineWrapping",  <boolean>$("#wraplines").is(":checked"));
 		this.setInscore (this.fEditor.getValue(), this.fFileName);
 
 		let logs = document.getElementById ("logs");
-		$("#log-font").click		( () => { logs.style.fontFamily = <string>$("#log-font").val(); });
+		$("#log-font").click		( () => { logs.style.fontFamily = this.fontMenu2fontFamily(<string>$("#log-font").val()); });
 		$("#log-size").click		( () => { logs.style.fontSize = $("#log-size").val() + "px"; });
 		logs.style.fontFamily = <string>$("#log-font").val();
 		logs.style.fontSize = $("#log-size").val() + "px";
 	}
 
+	fontMenu2fontFamily (val: string) : string 	{ 
+		switch (val) {
+			case "Arial":
+			case "Helvetica":
+			case "Courier":
+			case "Courier New":
+				return val;
+			case "Baloo":
+				return "baloo_2regular";
+			case "Overlock":
+				return "overlockregular";
+			case "Source Code":
+				return "source_code_proregular";
+		} 
+		return "Courier";
+	}
 	
 	saveInscore () 			{ download (this.fFileName + ".inscore",  this.fEditor.getValue()); }
 	saveHtml () 			{ download (this.fFileName + ".html",  document.getElementById("scene").innerHTML);  }
