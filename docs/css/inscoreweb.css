@@ -142,7 +142,7 @@ html, body {
   font-size: 14px;
 }
 
-@media only screen and (max-width: 760px) {
+@media only screen and (max-width: 768px) {
 	html, body {
 		padding : 0px;
 		margin-right : 5px;
@@ -151,7 +151,7 @@ html, body {
 	}
 
  	li > .dropdown-menu { font-size: 100%; }
-	.navbar  	{ font-size: 120%; }
+	.navbar  	{ font-size: 120%; z-index: 10;}
 	.tab-pane  	{ font-size: 120%; }
 	.nav-tabs  	{ font-size: 110%; }
 	.grid-container {
