@@ -2128,7 +2128,7 @@ var INScoreGlue = /** @class */ (function () {
     INScoreGlue.prototype.initialise = function () {
         var _this = this;
         this.fTimeTask = window.setInterval(function () { _this.fInscore.timeTask(); }, this.fInscore.getRate());
-        this.fSorterTask = window.setInterval(function () { _this.fInscore.sorterTask(); }, 1);
+        this.fSorterTask = window.setInterval(function () { _this.fInscore.sorterTask(); }, 10);
     };
     return INScoreGlue;
 }());
