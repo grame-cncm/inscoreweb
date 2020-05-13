@@ -13,11 +13,9 @@ GUIDOTS := guidoengine.ts libGUIDOEngine.d.ts
 LXMLTS  := libmusicxml.ts libmusicxml.d.ts
 TSFILES := $(wildcard $(TSFOLDER)/*.ts) $(wildcard $(TSFOLDER)/*.js)
 
-CSS := $(wildcard css/*.css)
-
 CMFILES  := $(CM:%=node_modules/codemirror/%)
 EXTJS    := node_modules/jquery/dist/jquery.min.js node_modules/bootstrap/dist/js/bootstrap.min.js node_modules/codemirror/lib/codemirror.js
-MINCSS   := $(CSSDIR)/inscore.min.css $(CSSDIR)/codemirror.min.css $(CSSDIR)/bootstrap.min.css
+CSS      := $(CSSDIR)/codemirror.min.css $(CSSDIR)/bootstrap.min.css
 GUIDONODE:= node_modules/@grame/guidolib
 LXMLNODE := node_modules/@grame/libmusicxml
 INSCOREJS ?= ../git/javascript
@@ -30,9 +28,8 @@ all:
 	$(MAKE) libs
 	$(MAKE) font
 	$(MAKE) css
-	$(MAKE) minify
 	$(MAKE) readme
-#	git checkout $(DIST)/CNAME
+	git checkout $(DIST)/CNAME
 
 test : 
 	@echo $(TSFILES)
@@ -51,7 +48,7 @@ help:
 	@echo "  ts           : build the typescript version"
 	@echo "  examples     : scan the $(DIST)/examples folder to generate the examples.json file"
 	@echo "========== Deployment targets"
-	@echo "  libs         : update wasm libs in $(DIST)/lib folder from nodes_modules and minify external libs"
+	@echo "  libs         : update wasm libs in $(DIST)/lib folder from nodes_modules"
 	@echo "  font         : copy the guidofonts in $(DIST)/font from guido nodes module"
 	@echo "  css          : generates minified version of css files"
 	@echo "  readme       : generates README.html from README.md"
@@ -79,13 +76,11 @@ $(TSLIB):
 $(DIST)/lib:
 	mkdir $(DIST)/lib
 
-minify:  $(OUT) 
-
 font:  $(FONTDIR)
 	cp $(GUIDONODE)/guido2-webfont/guido2-webfont.woff* $(FONTDIR)
 	cp $(GUIDONODE)/guido2-webfont/stylesheet.css $(FONTDIR)
 	
-css: $(MINCSS)
+css: $(CSS)
 
 $(FONTDIR):
 	mkdir $(FONTDIR)
@@ -104,22 +99,13 @@ examples:
 ###########################################################################
 clean:
 	rm -rf $(FONTDIR)
-	rm -f  $(MINCSS) $(CSSDIR)/bootstrap.min.css.map
+	rm -f  $(CSS) $(CSSDIR)/bootstrap.min.css.map
 	rm -f $(DIST)/inscoreEditor.js
-	rm -f $(LIBDIR)/libGUIDOEngine.* $(LIBDIR)/libmusicxml.* # $(LIBDIR)/extern.min.js
+	rm -f $(LIBDIR)/libGUIDOEngine.* $(LIBDIR)/libmusicxml.*
 	rm -f $(DIST)/examples.json
 
 
 ###########################################################################
-# $(DIST)/lib/extern.min.js : $(EXTFILES)
-# 	node node_modules/.bin/minify $(EXTFILES) > $@ || (rm $@ ; false)
-
-$(DIST)/guidoeditor.min.js : $(DIST)/guidoeditor.js
-	node node_modules/.bin/minify $< > $@ || (rm $@ ; false)
-
-$(CSSDIR)/inscore.min.css : $(CSS)
-	node node_modules/.bin/minify $(CSS) > $@ || (rm $@ ; false)
-
 $(CSSDIR)/codemirror.min.css : $(CMFILES)
 	node node_modules/.bin/minify $(CMFILES) > $@ || (rm $@s ; false)
 
