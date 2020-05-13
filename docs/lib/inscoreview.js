@@ -960,8 +960,31 @@ var PianoRollLineMode;
     PianoRollLineMode[PianoRollLineMode["kPRAutoLines"] = 0] = "kPRAutoLines";
     PianoRollLineMode[PianoRollLineMode["kPRNoLine"] = -1] = "kPRNoLine";
 })(PianoRollLineMode || (PianoRollLineMode = {}));
+var Safari = false;
+var Explorer = false;
+var Edge = false;
+var Firefox = false;
+var Chrome = false;
+var WindowsOS = false;
+var MacOS = false;
+var UnixOS = false;
+function scanNavigator() {
+    var ua = window.navigator.userAgent;
+    Chrome = (ua.indexOf('Chrome') >= 0);
+    Safari = (ua.indexOf('Safari') >= 0) && !Chrome;
+    Explorer = (ua.indexOf('MSIE ') >= 0) || (ua.indexOf('Trident') >= 0);
+    Edge = (ua.indexOf('Edge') >= 0);
+    Firefox = (ua.indexOf('Firefox') >= 0);
+}
+function scanPlatform() {
+    var os = window.navigator.appVersion;
+    WindowsOS = (os.indexOf('Win') >= 0);
+    MacOS = (os.indexOf('Mac') >= 0) && !Chrome;
+    UnixOS = (os.indexOf('X11') >= 0) || (os.indexOf('Linux') >= 0);
+}
 ///<reference path="JSSVGBase.ts"/>
 ///<reference path="lib/guidoengine.ts"/>
+///<reference path="navigator.ts"/>
 var JSGMNView = /** @class */ (function (_super) {
     __extends(JSGMNView, _super);
     function JSGMNView(parent, guido) {
@@ -969,12 +992,17 @@ var JSGMNView = /** @class */ (function (_super) {
         _this.fAR = null;
         _this.fGR = null;
         _this.fPage = 0;
+        _this.fScalingFactor = 2.5;
         _this.getElement().className = "inscore-gmn";
         _this.fGuido = guido;
         _this.fGR = null;
         _this.fAR = null;
         if (guido)
             _this.fParser = guido.openParser();
+        if (WindowsOS)
+            _this.fScalingFactor = 1.7;
+        else if (UnixOS)
+            _this.fScalingFactor = 1.7;
         return _this;
     }
     JSGMNView.prototype.scanMap = function (name) {
@@ -1010,7 +1038,7 @@ var JSGMNView = /** @class */ (function (_super) {
     JSGMNView.prototype.parse = function (gmn) { return this.fGuido.string2AR(this.fParser, gmn); };
     JSGMNView.prototype.string2Ar = function (obj, gmn) { return this.parse(gmn); };
     // scaled to get a size similar to native app
-    JSGMNView.prototype.parentScale = function () { return this.getParent().parentScale() * 2.5; };
+    JSGMNView.prototype.parentScale = function () { return this.getParent().parentScale() * this.fScalingFactor; };
     JSGMNView.prototype.gmn2svg = function (obj, gmn, page) {
         var ar = this.string2Ar(obj, gmn);
         if (ar) {
@@ -1581,20 +1609,6 @@ var JSSVGfView = /** @class */ (function (_super) {
     };
     return JSSVGfView;
 }(JSSVGView));
-var Safari = false;
-var Explorer = false;
-var Edge = false;
-var Firefox = false;
-var Chrome = false;
-function scanNavigator() {
-    var ua = window.navigator.userAgent;
-    Chrome = (ua.indexOf('Chrome') >= 0);
-    Safari = (ua.indexOf('Safari') >= 0) && !Chrome;
-    Explorer = (ua.indexOf('MSIE ') >= 0) || (ua.indexOf('Trident') >= 0);
-    ;
-    Edge = (ua.indexOf('Edge') >= 0);
-    Firefox = (ua.indexOf('Firefox') >= 0);
-}
 ///<reference path="JSObjectView.ts"/>
 ///<reference path="navigator.ts"/>
 //----------------------------------------------------------------------------
@@ -1611,7 +1625,6 @@ var JSSceneView = /** @class */ (function (_super) {
         // for a yet unknown reason, removing the next line result in incorrect
         // children positionning (like if position becomes relative to the window)
         div.style.filter = "blur(0px)";
-        scanNavigator();
         return _this;
     }
     JSSceneView.prototype.clone = function (parent) { return null; };
@@ -1629,6 +1642,7 @@ var JSSceneView = /** @class */ (function (_super) {
     JSSceneView.prototype.parentScale = function () {
         var div = this.getElement();
         var scale = Math.min(div.clientWidth, div.clientHeight) / Math.min(screen.width, screen.height) * 2;
+        // console.log (this + ".parentScale: " + scale);
         return scale;
     };
     JSSceneView.prototype.getScale = function (pos) { return pos.scale; };
@@ -2103,6 +2117,7 @@ var JSViewFactory = /** @class */ (function () {
 var inscorefactory = new JSViewFactory();
 ///<reference path="inscore.ts"/>
 ///<reference path="libraries.ts"/>
+///<reference path="navigator.ts"/>
 //----------------------------------------------------------------------------
 var INScoreGlue = /** @class */ (function () {
     function INScoreGlue() {
@@ -2129,6 +2144,8 @@ var INScoreGlue = /** @class */ (function () {
         var _this = this;
         this.fTimeTask = window.setInterval(function () { _this.fInscore.timeTask(); }, this.fInscore.getRate());
         this.fSorterTask = window.setInterval(function () { _this.fInscore.sorterTask(); }, 10);
+        scanPlatform();
+        scanNavigator();
     };
     return INScoreGlue;
 }());
