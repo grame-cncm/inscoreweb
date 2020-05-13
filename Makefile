@@ -16,7 +16,7 @@ TSFILES := $(wildcard $(TSFOLDER)/*.ts) $(wildcard $(TSFOLDER)/*.js)
 CSS := $(wildcard css/*.css)
 
 CMFILES  := $(CM:%=node_modules/codemirror/%)
-EXTFILES := node_modules/jquery/dist/jquery.js node_modules/bootstrap/dist/js/bootstrap.js node_modules/codemirror/lib/codemirror.js
+EXTJS    := node_modules/jquery/dist/jquery.min.js node_modules/bootstrap/dist/js/bootstrap.min.js node_modules/codemirror/lib/codemirror.js
 MINCSS   := $(CSSDIR)/inscore.min.css $(CSSDIR)/codemirror.min.css $(CSSDIR)/bootstrap.min.css
 GUIDONODE:= node_modules/@grame/guidolib
 LXMLNODE := node_modules/@grame/libmusicxml
@@ -64,13 +64,14 @@ ts : $(TSLIB) $(DIST)/inscoreEditor.js
 $(DIST)/inscoreEditor.js : $(TSFILES)
 	cd $(TSFOLDER) && tsc
 
-libs: $(LIBDIR) $(DIST)/lib/extern.min.js
+libs: $(LIBDIR) 
 	cp $(INSCOREJS)/lib/libINScore.js 	$(LIBDIR)
 	cp $(INSCOREJS)/lib/libINScore.wasm $(LIBDIR)
 	cp $(GUIDONODE)/libGUIDOEngine.js 	$(LIBDIR)
 	cp $(GUIDONODE)/libGUIDOEngine.wasm $(LIBDIR)
 	cp $(LXMLNODE)/libmusicxml.js 		$(LIBDIR)
 	cp $(LXMLNODE)/libmusicxml.wasm 	$(LIBDIR)
+	cp $(EXTJS)  $(LIBDIR)
 
 $(TSLIB):
 	mkdir $(TSLIB)
@@ -105,13 +106,13 @@ clean:
 	rm -rf $(FONTDIR)
 	rm -f  $(MINCSS) $(CSSDIR)/bootstrap.min.css.map
 	rm -f $(DIST)/inscoreEditor.js
-	rm -f $(LIBDIR)/libGUIDOEngine.* $(LIBDIR)/libmusicxml.* $(LIBDIR)/extern.min.js
+	rm -f $(LIBDIR)/libGUIDOEngine.* $(LIBDIR)/libmusicxml.* # $(LIBDIR)/extern.min.js
 	rm -f $(DIST)/examples.json
 
 
 ###########################################################################
-$(DIST)/lib/extern.min.js : $(EXTFILES)
-	node node_modules/.bin/minify $(EXTFILES) > $@ || (rm $@ ; false)
+# $(DIST)/lib/extern.min.js : $(EXTFILES)
+# 	node node_modules/.bin/minify $(EXTFILES) > $@ || (rm $@ ; false)
 
 $(DIST)/guidoeditor.min.js : $(DIST)/guidoeditor.js
 	node node_modules/.bin/minify $< > $@ || (rm $@ ; false)
