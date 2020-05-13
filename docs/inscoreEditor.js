@@ -147,7 +147,7 @@ var InscoreEditor = /** @class */ (function () {
                     _this.drop(filelist[i]);
             }
         });
-        $("#font-family").change(function (event) { _this.fEditor.getWrapperElement().style.fontFamily = $("#font-family").val(); });
+        $("#font-family").change(function (event) { _this.fEditor.getWrapperElement().style.fontFamily = _this.fontMenu2fontFamily($("#font-family").val()); });
         $("#font-size").change(function (event) { _this.fEditor.getWrapperElement().style.fontSize = $("#font-size").val() + "px"; });
         $("#etheme").change(function (event) { _this.fEditor.setOption("theme", $("#etheme").val()); });
         $("#wraplines").change(function (event) { _this.fEditor.setOption("lineWrapping", $("#wraplines").is(":checked")); });
@@ -156,16 +156,32 @@ var InscoreEditor = /** @class */ (function () {
         $("#clear-log").click(function (event) { $("#logs").text(""); });
         $("#saveinscore").click(function (event) { _this.saveInscore(); });
         $("#savehtml").click(function (event) { _this.saveHtml(); });
-        this.fEditor.getWrapperElement().style.fontFamily = $("#font-family").val();
+        this.fEditor.getWrapperElement().style.fontFamily = this.fontMenu2fontFamily($("#font-family").val());
         this.fEditor.getWrapperElement().style.fontSize = $("#font-size").val() + "px";
         this.fEditor.setOption("theme", $("#etheme").val());
         this.fEditor.setOption("lineWrapping", $("#wraplines").is(":checked"));
         this.setInscore(this.fEditor.getValue(), this.fFileName);
         var logs = document.getElementById("logs");
-        $("#log-font").click(function () { logs.style.fontFamily = $("#log-font").val(); });
+        $("#log-font").click(function () { logs.style.fontFamily = _this.fontMenu2fontFamily($("#log-font").val()); });
         $("#log-size").click(function () { logs.style.fontSize = $("#log-size").val() + "px"; });
         logs.style.fontFamily = $("#log-font").val();
         logs.style.fontSize = $("#log-size").val() + "px";
+    };
+    InscoreEditor.prototype.fontMenu2fontFamily = function (val) {
+        switch (val) {
+            case "Arial":
+            case "Helvetica":
+            case "Courier":
+            case "Courier New":
+                return val;
+            case "Baloo":
+                return "baloo_2regular";
+            case "Overlock":
+                return "overlockregular";
+            case "Source Code":
+                return "source_code_proregular";
+        }
+        return "Courier";
     };
     InscoreEditor.prototype.saveInscore = function () { download(this.fFileName + ".inscore", this.fEditor.getValue()); };
     InscoreEditor.prototype.saveHtml = function () { download(this.fFileName + ".html", document.getElementById("scene").innerHTML); };
