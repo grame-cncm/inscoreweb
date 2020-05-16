@@ -968,6 +968,7 @@ var Chrome = false;
 var WindowsOS = false;
 var MacOS = false;
 var UnixOS = false;
+var AndroidOS = false;
 function scanNavigator() {
     var ua = window.navigator.userAgent;
     Chrome = (ua.indexOf('Chrome') >= 0);
@@ -981,6 +982,7 @@ function scanPlatform() {
     WindowsOS = (os.indexOf('Win') >= 0);
     MacOS = (os.indexOf('Mac') >= 0) && !Chrome;
     UnixOS = (os.indexOf('X11') >= 0) || (os.indexOf('Linux') >= 0);
+    AndroidOS = (os.indexOf('Android') >= 0);
 }
 ///<reference path="JSSVGBase.ts"/>
 ///<reference path="lib/guidoengine.ts"/>
@@ -992,7 +994,7 @@ var JSGMNView = /** @class */ (function (_super) {
         _this.fAR = null;
         _this.fGR = null;
         _this.fPage = 0;
-        _this.fScalingFactor = 2.5;
+        _this.fScalingFactor = 2.3;
         _this.getElement().className = "inscore-gmn";
         _this.fGuido = guido;
         _this.fGR = null;
@@ -1002,6 +1004,8 @@ var JSGMNView = /** @class */ (function (_super) {
         if (WindowsOS)
             _this.fScalingFactor = 1.7;
         else if (UnixOS)
+            _this.fScalingFactor = 1.7;
+        else if (AndroidOS)
             _this.fScalingFactor = 1.7;
         return _this;
     }
@@ -1641,8 +1645,9 @@ var JSSceneView = /** @class */ (function (_super) {
     };
     JSSceneView.prototype.parentScale = function () {
         var div = this.getElement();
-        var scale = Math.min(div.clientWidth, div.clientHeight) / Math.min(screen.width, screen.height) * 2;
-        // console.log (this + ".parentScale: " + scale);
+        var screenref = AndroidOS ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height);
+        var scale = Math.min(div.clientWidth, div.clientHeight) / screenref * 2;
+        console.log(this + ".parentScale: " + scale + " div: " + div.clientWidth + " " + div.clientHeight + " screen: " + screen.width + " " + screen.height);
         return scale;
     };
     JSSceneView.prototype.getScale = function (pos) { return pos.scale; };

@@ -8,6 +8,8 @@ html, body {
 	height: 99%;
 }
 
+button { z-index: 1000;}
+
 #about 	{ padding: 40px; font-size: 14pt; font-family: "Arial, Helvetica"; }
 #editor { }
 #ilogs  { }
@@ -62,7 +64,7 @@ html, body {
 	bottom: 0;
 	left: 0;
 	right: 0;
-	scale: 50%;
+	/* scale: 50%; */
 	z-index: 100;
 	/* -webkit-animation: wait 2s ease infinite alternate;
 	-moz-animation: wait 2s ease infinite alternate;
@@ -166,6 +168,11 @@ html, body {
 	  grid-gap: 5px;
 	  padding: 5px;
 	}
+
+	#loading {
+		scale: 25%;
+	}
+	
 }
 
 .dropdown-submenu {
