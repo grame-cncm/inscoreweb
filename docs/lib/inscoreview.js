@@ -1647,7 +1647,6 @@ var JSSceneView = /** @class */ (function (_super) {
         var div = this.getElement();
         var screenref = AndroidOS ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height);
         var scale = Math.min(div.clientWidth, div.clientHeight) / screenref * 2;
-        console.log(this + ".parentScale: " + scale + " div: " + div.clientWidth + " " + div.clientHeight + " screen: " + screen.width + " " + screen.height);
         return scale;
     };
     JSSceneView.prototype.getScale = function (pos) { return pos.scale; };
