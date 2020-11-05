@@ -73,9 +73,6 @@ class InscoreEditor {
 		$("#log-size").click		( () => { logs.style.fontSize = $("#log-size").val() + "px"; });
 		logs.style.fontFamily = <string>$("#log-font").val();
 		logs.style.fontSize = $("#log-size").val() + "px";
-
-		$("#fullscreen").click		( (event) => { this.loadPreview() }); 
-		this.fKeyHandler = this.closePreview;
 	}
 
 	fontMenu2fontFamily (val: string) : string 	{ 
