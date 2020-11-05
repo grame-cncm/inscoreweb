@@ -56,15 +56,13 @@ var INScore = /** @class */ (function () {
     }
     INScore.prototype.initialise = function () {
         return __awaiter(this, void 0, void 0, function () {
-            var module;
             var _this = this;
             return __generator(this, function (_a) {
-                module = INScoreModule();
                 return [2 /*return*/, new Promise(function (success, failure) {
-                        module['onRuntimeInitialized'] = function () {
+                        INScoreModule().then(function (module) {
                             _this.moduleInit(module);
                             success(_this);
-                        };
+                        });
                     })];
             });
         });
@@ -674,6 +672,41 @@ var JSAutoSize = /** @class */ (function (_super) {
     };
     return JSAutoSize;
 }(JSObjectView));
+///<reference path="JSAutoSize.ts"/>
+var JSAudioView = /** @class */ (function (_super) {
+    __extends(JSAudioView, _super);
+    function JSAudioView(parent) {
+        var _this = this;
+        var audio = document.createElement('audio');
+        _this = _super.call(this, audio, parent) || this;
+        _this.fAudio = audio;
+        _this.fFile = "";
+        _this.getElement().className = "inscore-audio";
+        return _this;
+    }
+    JSAudioView.prototype.clone = function (parent) { return new JSAudioView(parent); };
+    JSAudioView.prototype.updateSpecial = function (obj, objid) {
+        this.fAudio.src = obj.getFile();
+        return _super.prototype.updateSpecial.call(this, obj, objid);
+    };
+    JSAudioView.prototype.setShadow = function (elt, val) {
+        this.fAudio.style.filter = "drop-shadow(" + val.color + " " + val.xOffset + "px " + val.yOffset + "px " + val.blur + "px)";
+    };
+    JSAudioView.prototype.updateSpecific = function (obj) {
+        var media = obj.getMediaInfos();
+        if (media.playing)
+            this.fAudio.play();
+        else
+            this.fAudio.pause();
+        this.fAudio.volume = media.volume;
+        if (media.rate >= 0)
+            this.fAudio.playbackRate = media.rate;
+        if (media.mdate >= 0)
+            this.fAudio.currentTime = media.mdate;
+        return true;
+    };
+    return JSAudioView;
+}(JSAutoSize));
 ///<reference path="JSSVGBase.ts"/>
 var JSCurveView = /** @class */ (function (_super) {
     __extends(JSCurveView, _super);
@@ -1987,6 +2020,14 @@ var libraries = /** @class */ (function () {
             });
         });
     };
+    // async faustinit():Promise<any> { 
+    // 	return new Promise( (success: any, failure: any) => {
+    // 		fFaust = new Faust2WebAudio.Faust({ debug: true, wasmLocation: "lib/faust/libfaust-wasm.wasm", dataLocation: "lib/faust/libfaust-wasm.data" });
+    // 		this.fFaust.ready.then ( 
+    // 			() => { console.log ("Faust version: " + fFaust.getLibFaustVersion()); success (this); },
+    // 		() => { this.fFaust = null; success(this); });
+    // 	}); 
+    // }
     libraries.prototype.guido = function () { return this.fGuido; };
     libraries.prototype.xmllib = function () { return this.fXMLLib; };
     return libraries;
@@ -2014,6 +2055,7 @@ var inscorelibs = new libraries();
 ///<reference path="JSPianorollfView.ts"/>
 ///<reference path="JSLayerView.ts"/>
 ///<reference path="JSSVGfView.ts"/>
+///<reference path="JSAudioView.ts"/>
 ///<reference path="JSVideoView.ts"/>
 ///<reference path="TSyncManager.ts"/>
 ///<reference path="libraries.ts"/>
@@ -2096,6 +2138,8 @@ var JSViewFactory = /** @class */ (function () {
                 view = new JSVideoView(parent);
                 break;
             case "audio":
+                view = new JSAudioView(parent);
+                break;
             case "fileWatcher":
             case "graph":
             case "fastgraph":
@@ -2105,7 +2149,7 @@ var JSViewFactory = /** @class */ (function () {
             case "memimg":
             case "sig":
             case "signode":
-                console.log("Type " + type + " is not yet supported");
+                console.log(type + "type is not yet supported");
                 break;
             default:
                 console.error("JSViewFactory::create unknown type " + type);
@@ -2119,6 +2163,91 @@ var JSViewFactory = /** @class */ (function () {
     return JSViewFactory;
 }());
 var inscorefactory = new JSViewFactory();
+///<reference path="lib/libINScore.d.ts"/>
+var TConnection = /** @class */ (function () {
+    function TConnection(url) {
+        this.fSocket = null;
+        this.fEventSrc = null;
+        this.fUrl = url;
+        this.connect(url);
+    }
+    TConnection.prototype.connect = function (url) {
+        var _this = this;
+        this.fUrl = url;
+        this.fEventSrc = new EventSource(url);
+        this.fEventSrc.onmessage = function (event) { _this.processData(event); };
+        this.fEventSrc.onopen = function () { console.log("Connection to " + _this.fUrl + " established"); };
+        this.fEventSrc.onerror = function (error) { _this.error(); };
+        // this.fSocket = new WebSocket(url);
+        // this.fSocket.onopen = () => { console.log("Connection to " + this.fUrl + " established"); };
+        // this.fSocket.onmessage = (event) => { this.processData (event.data) };
+        // this.fSocket.onerror = (error: wserror) => { console.log (`[websocket error] ${error}`); };
+    };
+    TConnection.prototype.close = function () {
+        if (this.fEventSrc)
+            this.fEventSrc.close();
+        this.fEventSrc = null;
+        if (this.fSocket)
+            this.fSocket.close();
+        this.fSocket = null;
+    };
+    TConnection.prototype.error = function () {
+        var _this = this;
+        var delay = 5;
+        console.log("Connection to " + this.fUrl + "failed");
+        console.log("Retry to connect in " + delay + " seconds");
+        setTimeout(function () { _this.connect(_this.fUrl); }, delay * 1000);
+    };
+    TConnection.prototype.state = function () {
+        if (this.fEventSrc)
+            return this.fEventSrc.readyState;
+        else if (this.fSocket)
+            return this.fSocket.readyState;
+        return 2;
+    };
+    TConnection.prototype.url = function () { return this.fUrl; };
+    TConnection.prototype.processData = function (e) {
+        var data = atob(e.data);
+        try {
+            var json = JSON.parse(data);
+            if (json['data'] && (json['method'] == "post")) {
+                console.log("inscore http: " + json['data']);
+                inscore.loadInscore(json['data']);
+            }
+            else
+                console.log("Incorrect JSON message received from " + this.fUrl + ": " + json);
+        }
+        catch (err) {
+            if (e.data == "INScore")
+                console.log("Connected to INScore at " + this.fUrl);
+            else {
+                console.log("Incorrect message received from " + this.fUrl + ": " + e.data);
+                console.log(err);
+            }
+        }
+    };
+    return TConnection;
+}());
+var TConnections = /** @class */ (function () {
+    function TConnections() {
+    }
+    TConnections.connect = function (cnx, clear) {
+        if (clear) {
+            this.fCnx.forEach(function (elt) { elt.close(); });
+            this.fCnx = [];
+        }
+        if (cnx && cnx.length)
+            this.fCnx.push(new TConnection(cnx));
+        return true;
+    };
+    TConnections.state = function () {
+        var out = new Array();
+        this.fCnx.forEach(function (elt) { out.push({ url: elt.url(), state: elt.state() }); });
+        return out;
+    };
+    TConnections.fCnx = [];
+    return TConnections;
+}());
 ///<reference path="inscore.ts"/>
 ///<reference path="libraries.ts"/>
 ///<reference path="navigator.ts"/>
