@@ -46,3 +46,13 @@ To solve, open the file `node_modules/@types/tern/index.d.ts`and comment the exp
 // export * from "./lib/infer";
 // export * from "./lib/tern";
 ~~~~~~
+
+
+## Web Interface
+
+The editor supports several options that may be passed on the url:
+
+- ?mode=preview    : open the editor in preview mode (equivalent to the Preview button)
+- ?code=&lt;b64code>  : loads the inscore code passed as argument of the code option. This code must be encoded in base 64.
+- ?src=&lt;url> : loads the inscore file indicated by the URL (note that you may face the [CORS](https://developer.mozilla.org/fr/docs/Web/HTTP/CORS) issue, but works with the embedded sample scripts)
+
