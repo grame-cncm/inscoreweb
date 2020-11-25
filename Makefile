@@ -18,6 +18,7 @@ EXTJS    := node_modules/jquery/dist/jquery.min.js node_modules/bootstrap/dist/j
 CSS      := $(CSSDIR)/codemirror.min.css $(CSSDIR)/bootstrap.min.css
 GUIDONODE:= node_modules/@grame/guidolib
 LXMLNODE := node_modules/@grame/libmusicxml
+FAUSTNODE := node_modules/@grame/libfaust
 INSCOREJS ?= ../git/javascript
 
 .PHONY: examples
@@ -68,6 +69,10 @@ libs: $(LIBDIR)
 	cp $(GUIDONODE)/libGUIDOEngine.wasm $(LIBDIR)
 	cp $(LXMLNODE)/libmusicxml.js 		$(LIBDIR)
 	cp $(LXMLNODE)/libmusicxml.wasm 	$(LIBDIR)
+	cp $(FAUSTNODE)/libfaust-wasm.js 	$(LIBDIR)
+	cp $(FAUSTNODE)/libfaust-wasm.wasm 	$(LIBDIR)
+	cp $(FAUSTNODE)/FaustLibrary.js 	$(LIBDIR)
+	cp $(FAUSTNODE)/libfaust-wasm.data 	$(DIST)
 	cp $(EXTJS)  $(LIBDIR)
 
 $(TSLIB):
