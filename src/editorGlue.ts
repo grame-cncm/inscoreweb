@@ -21,7 +21,8 @@ class EditorGlue extends INScoreBase {
 
 	//------------------------------------------------------------------------
 	// scan the current location to detect parameters
-	scanOptions() : void	{
+	scanOptions() : boolean	{
+		let retcode = false;
 		let options = this.scanUrl();
 		let preview = false;
 		for (let i=0; (i<options.length) && !preview; i++) {
@@ -34,21 +35,24 @@ class EditorGlue extends INScoreBase {
 			switch (option) {
 				case "code":
 					editor.setInscore (atob(value));
-					if (preview) $("#fullscreen").click();
+					if (preview) $("#fullscreen").trigger("click");
 					preview = false;
+					retcode = true;
 					break;
 				case "src":
 					var oReq = new XMLHttpRequest();
-					if (preview) oReq.onload = () => { editor.setInscore( oReq.responseText, value); $("#fullscreen").click(); };
+					if (preview) oReq.onload = () => { editor.setInscore( oReq.responseText, value); $("#fullscreen").trigger("click"); };
 					else 		 oReq.onload = () => { editor.setInscore( oReq.responseText, value); };
 					oReq.open("get", value, true);
 					oReq.send();
 					preview = false;
+					retcode = true;
 					break;
 			}
 		}
 		if (preview)
-			$("#fullscreen").click();
+			$("#fullscreen").trigger("click");
+		return retcode;
 }
 
 	//------------------------------------------------------------------------
