@@ -703,7 +703,6 @@ var JSAudioView = /** @class */ (function (_super) {
             this.fAudio.playbackRate = media.rate;
         if (media.mdate >= 0)
             this.fAudio.currentTime = media.mdate;
-        return true;
     };
     return JSAudioView;
 }(JSAutoSize));
@@ -773,6 +772,210 @@ var JSEllipseView = /** @class */ (function (_super) {
     };
     return JSEllipseView;
 }(JSSvgBase));
+///<reference types="@grame/libfaust"/>
+//----------------------------------------------------------------------------
+// the libMusicXML interface
+//----------------------------------------------------------------------------
+var faust = /** @class */ (function () {
+    function faust() {
+    }
+    faust.prototype.initialise = function () {
+        return __awaiter(this, void 0, void 0, function () {
+            var _this = this;
+            return __generator(this, function (_a) {
+                return [2 /*return*/, new Promise(function (success, failure) {
+                        FaustModule().then(function (module) {
+                            _this.fModule = module;
+                            _this.fLib = Faust.createLibFaust(module);
+                            success(_this);
+                        });
+                    })];
+            });
+        });
+    };
+    faust.prototype.version = function () { return this.fLib.version(); };
+    faust.prototype.module = function () { return this.fModule; };
+    faust.prototype.lib = function () { return this.fLib; };
+    faust.prototype.test = function () {
+        return __awaiter(this, void 0, void 0, function () {
+            var audioCtx;
+            return __generator(this, function (_a) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                Faust.compileAudioNode(audioCtx, this.fModule, "process=+;", null, 0).then((function (node) {
+                    console.log("test function: " + node.setParamValue("/toto", 1));
+                }));
+                return [2 /*return*/];
+            });
+        });
+    };
+    return faust;
+}());
+///<reference path="JSSVGBase.ts"/>
+///<reference path="faust.ts"/>
+var JSFaustView = /** @class */ (function (_super) {
+    __extends(JSFaustView, _super);
+    function JSFaustView(parent, compiler) {
+        var _this = _super.call(this, parent) || this;
+        _this.fAudioNode = null;
+        _this.fVoices = 0;
+        _this.fFaust = compiler;
+        if (!JSFaustView.fAudioContext) {
+            JSFaustView.fAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+            _this.unlockAudioContext(JSFaustView.fAudioContext);
+        }
+        _this.getElement().className = "inscore-svg";
+        return _this;
+    }
+    JSFaustView.prototype.clone = function (parent) { return new JSFaustView(parent, this.fFaust); };
+    JSFaustView.prototype.toString = function () { return "JSFaustView"; };
+    JSFaustView.prototype.osc2svgname = function (name) { return name.replace(/\//g, "_"); };
+    JSFaustView.prototype.getSVGTarget = function () { return this.fSVG; };
+    JSFaustView.prototype.updateSVGDimensions = function (w, h) { };
+    JSFaustView.prototype.updatePenControl = function (pen) { this.updateRegularPen(pen); };
+    JSFaustView.prototype["delete"] = function () {
+        if (this.fAudioNode) {
+            this.fAudioNode.disconnect();
+            this.fAudioNode = null;
+        }
+        _super.prototype["delete"].call(this);
+    };
+    JSFaustView.prototype.error = function (address, msg) {
+        var imsg = inscore.newMessageM('set');
+        inscore.msgAddStr(imsg, 'txt');
+        inscore.msgAddStr(imsg, msg);
+        inscore.postMessage(address, imsg);
+    };
+    // Creates the javascript callback to handle user navigation with the generated svg diagram
+    JSFaustView.prototype.makeLinkHandler = function (name, svg) {
+        var FSVG = this.fSVG;
+        this.fSVG.id = name;
+        FSVG.diagram = svg;
+        var code = name + "svg =  function (path) { \
+            let elt= document.getElementById ('" + name + "'); \
+            elt.innerHTML = elt.diagram.getSVG(path); \
+            let p = elt.parentElement; \
+            let bb = elt.getBBox(); \
+            p.style.width = elt.style.width = bb.width; \
+            p.style.height = elt.style.height = bb.height; \
+        }";
+        eval(code);
+    };
+    JSFaustView.prototype.dsp2Svg = function (code, name) {
+        var svg = Faust.createSVGDiagrams(this.fFaust.lib(), name, code, "");
+        if (svg.success()) {
+            this.makeLinkHandler(name, svg);
+            return { svg: svg.getSVG(), error: null };
+        }
+        return { svg: "", error: "While generating Faust svg diagram :" + svg.error() };
+    };
+    JSFaustView.prototype.unlockclean = function () {
+        var _this = this;
+        JSFaustView.fUnlockEvents.forEach(function (e) { return document.body.removeEventListener(e, _this.unlock); });
+    };
+    JSFaustView.prototype.unlock = function () { JSFaustView.fAudioContext.resume().then(this.unlockclean); };
+    JSFaustView.prototype.unlockAudioContext = function (audioCtx) {
+        var _this = this;
+        if (audioCtx.state !== "suspended")
+            return;
+        JSFaustView.fUnlockEvents.forEach(function (e) { return document.body.addEventListener(e, _this.unlock, false); });
+    };
+    JSFaustView.prototype.updateSpecific = function (obj) {
+        var _this = this;
+        if (this.fAudioNode) {
+            var data = obj.getFaustInfos(true, false);
+            if (data.playing)
+                this.fAudioNode.connect(JSFaustView.fAudioContext.destination);
+            else
+                this.fAudioNode.disconnect();
+            var val = data.values;
+            var n = val.size();
+            var _loop_1 = function (i) {
+                var v = val.get(i);
+                this_1.fAudioNode.setParamValue(v.address, v.value);
+                if ((v.type == 0) && v.value) // schedule the button off value
+                    setTimeout(function () { _this.fAudioNode.setParamValue(v.address, 0); }, 100);
+            };
+            var this_1 = this;
+            for (var i = 0; i < n; i++) {
+                _loop_1(i);
+            }
+            if (this.fVoices && data.playing) {
+                var node = this.fAudioNode;
+                var keys = data.keys;
+                n = keys.size();
+                for (var i = 0; i < n; i++) {
+                    var v = keys.get(i);
+                    if (v.type == 0)
+                        node.keyOn(v.chan, v.pitch, v.vel);
+                    else if (v.type == 1)
+                        node.keyOff(v.chan, v.pitch, v.vel);
+                    else if (v.type == -1)
+                        node.allNotesOff(true);
+                }
+            }
+        }
+        // else console.log ("Faust audio node is not available");
+    };
+    JSFaustView.prototype.makeNode = function (oid, code, voices) {
+        var _this = this;
+        if (JSFaustView.fCompilerLock) {
+            setTimeout(function () { _this.makeNode(oid, code, voices); }, 50);
+            return JSFaustView.kPending;
+        }
+        JSFaustView.fCompilerLock = true;
+        Faust.compileAudioNode(JSFaustView.fAudioContext, this.fFaust.module(), code, null, voices).then(function (node) {
+            JSFaustView.fCompilerLock = false;
+            if (_this.fAudioNode)
+                _this.fAudioNode.disconnect();
+            _this.fAudioNode = node;
+            _this.fVoices = voices;
+            var obj = INScore.objects().create(oid);
+            if (!node) {
+                "";
+                var address = obj.getOSCAddress();
+                _this.error(address, "Cannot compile " + address + ".");
+                return JSFaustView.kFailed;
+            }
+            obj.setFaustInOut(node.getNumInputs(), node.getNumOutputs());
+            var ui = node.getDescriptors();
+            ui.forEach(function (elt) {
+                // console.log ("JSFaustView.makeNode elt " + elt.type + " " + elt.label + " " + elt.address + " " + elt.init + " " + elt.min + " " + elt.max + " " + elt.step );
+                if (elt.type == "button")
+                    obj.setFaustUI(elt.type, elt.label, elt.address, 0, 0, 1, 1);
+                else
+                    obj.setFaustUI(elt.type, elt.label, elt.address, elt.init, elt.min, elt.max, elt.step);
+            });
+            _this.updateSpecific(obj);
+            var bb = _this.fSVG.getBBox();
+            _this.updateObjectSizeSync(obj, bb.width + bb.x, bb.height + bb.y);
+            obj.ready();
+            INScore.objects().del(obj);
+        });
+        return JSFaustView.kSuccess;
+    };
+    JSFaustView.prototype.updateSpecial = function (obj, oid) {
+        if (!this.fFaust) {
+            console.log("Faust engine is not available");
+            return false;
+        }
+        var data = obj.getFaustInfos(false, true);
+        var diagram = this.dsp2Svg(data.code, this.osc2svgname(obj.getOSCAddress()));
+        if (diagram.error)
+            this.error(obj.getOSCAddress(), diagram.error);
+        else {
+            this.fSVG.innerHTML = diagram.svg;
+            this.makeNode(oid, data.code, data.voices);
+        }
+        return _super.prototype.updateSpecial.call(this, obj, oid);
+    };
+    JSFaustView.fAudioContext = null;
+    JSFaustView.fUnlockEvents = ["touchstart", "touchend", "mousedown", "keydown"];
+    JSFaustView.fCompilerLock = false;
+    JSFaustView.kFailed = 0;
+    JSFaustView.kSuccess = 1;
+    JSFaustView.kPending = 2;
+    return JSFaustView;
+}(JSSvgBase));
 ///<reference path="libGUIDOEngine.d.ts"/>
 //----------------------------------------------------------------------------
 // GUIDOEngine interface
@@ -782,15 +985,14 @@ var GuidoEngine = /** @class */ (function () {
     }
     GuidoEngine.prototype.initialise = function () {
         return __awaiter(this, void 0, void 0, function () {
-            var module;
             var _this = this;
             return __generator(this, function (_a) {
-                module = GuidoModule();
+                // var module = GuidoModule();
                 return [2 /*return*/, new Promise(function (success, failure) {
-                        module['onRuntimeInitialized'] = function () {
+                        GuidoModule().then(function (module) {
                             _this.moduleInit(module);
                             success(_this);
-                        };
+                        });
                     })];
             });
         });
@@ -1054,6 +1256,7 @@ var JSGMNView = /** @class */ (function (_super) {
             return { width: 0, height: 0 };
         return { width: parseInt(n[3]), height: parseInt(n[4]) };
     };
+    JSGMNView.prototype.viewBox = function () { return this.fViewBox; };
     JSGMNView.prototype.clone = function (parent) { return new JSGMNView(parent, this.fGuido); };
     JSGMNView.prototype.getSVGTarget = function () { return this.fSVG; };
     JSGMNView.prototype.toString = function () { return "JSGMNView"; };
@@ -1083,8 +1286,8 @@ var JSGMNView = /** @class */ (function (_super) {
             var svg = this.fGuido.gr2SVG(gr, page, false, 0);
             this.fSVG.innerHTML = svg;
             var innerSvg = this.fSVG.getElementsByTagName('svg');
-            var viewbox = this.scanViewBox(innerSvg[0].getAttribute('viewBox'));
-            this.updateObjectSizeSync(obj, viewbox.width, viewbox.height);
+            this.fViewBox = this.scanViewBox(innerSvg[0].getAttribute('viewBox'));
+            this.updateObjectSizeSync(obj, this.fViewBox.width, this.fViewBox.height);
             obj.updateTime2TimeMap(this.fGuido.getTimeMap(ar));
             if (this.fGR) {
                 this.fGuido.freeGR(this.fGR);
@@ -1105,10 +1308,12 @@ var JSGMNView = /** @class */ (function (_super) {
     };
     JSGMNView.prototype.updateSpecial = function (obj, oid) {
         var guido = obj.getGuidoInfos();
-        if (this.fGuido)
-            return this.gmn2svg(obj, guido.code, guido.page);
-        else
+        if (!this.fGuido) {
             console.log("Guido engine is not available");
+            return false;
+        }
+        if (this.gmn2svg(obj, guido.code, guido.page))
+            return _super.prototype.updateSpecial.call(this, obj, oid);
         return false;
     };
     // this method is called by the model to update the map synchronously
@@ -1116,8 +1321,9 @@ var JSGMNView = /** @class */ (function (_super) {
         var view = JSObjectView.getObjectView(id);
         if (view) {
             var obj = INScore.objects().create(oid);
-            var w = view.getSVGTarget().clientWidth;
-            var h = view.getSVGTarget().clientHeight;
+            var vb = view.viewBox();
+            var w = vb.width;
+            var h = vb.height;
             var map = view.getMap(mapname, w, h);
             obj.updateGraphic2TimeMap(mapname, map, w, h);
             INScore.objects().del(obj);
@@ -1218,7 +1424,7 @@ var TFileLoader = /** @class */ (function () {
                 content = TFileLoader.getMusicXML(element);
                 break;
             default:
-                console.error("Unsupported content type " + doc.contentType);
+                console.log("Unsupported content type " + doc.contentType);
                 content = null;
         }
         obj.parentElement.removeChild(obj);
@@ -1231,7 +1437,7 @@ var TFileLoader = /** @class */ (function () {
         obj.style.visibility = "hidden";
         div.appendChild(obj);
         return new Promise(function (resolve, failure) {
-            obj.addEventListener("error", function () { console.error("can't open file " + file); });
+            obj.addEventListener("error", function () { console.log("can't open file " + file); failure(null); });
             obj.addEventListener("load", function () {
                 var content = TFileLoader.getContent(obj);
                 resolve(content);
@@ -1243,7 +1449,7 @@ var TFileLoader = /** @class */ (function () {
 ///<reference path="TFileLoader.ts"/>
 var TFileBased = /** @class */ (function () {
     function TFileBased() {
-        this.fContent = "";
+        this.fContent = null;
     }
     TFileBased.prototype.getData = function (file, div, pending) {
         var _this = this;
@@ -1258,6 +1464,21 @@ var TFileBased = /** @class */ (function () {
                 pending();
         });
         return false;
+    };
+    TFileBased.prototype.getDataASync = function (file, div) {
+        return __awaiter(this, void 0, void 0, function () {
+            var _a;
+            return __generator(this, function (_b) {
+                switch (_b.label) {
+                    case 0:
+                        _a = this;
+                        return [4 /*yield*/, TFileLoader.load(div, file)];
+                    case 1:
+                        _a.fContent = _b.sent();
+                        return [2 /*return*/, this.fContent];
+                }
+            });
+        });
     };
     TFileBased.prototype.get = function () {
         var content = "";
@@ -1279,12 +1500,25 @@ var JSGMNfView = /** @class */ (function (_super) {
         return _this;
     }
     JSGMNfView.prototype.toString = function () { return "JSGMNfView"; };
+    // oldupdateSpecial(obj: INScoreObject, oid: number)	: boolean {
+    //     let address = obj.getOSCAddress();
+    //     let pending = (): void => { this.refresh (address); };
+    // 	if (this.fContent.getData (obj.getFile(), this.getElement(), pending)) 
+    // 		return super.updateSpecial (obj, oid);
+    // 	return false;
+    // }
     JSGMNfView.prototype.updateSpecial = function (obj, oid) {
         var _this = this;
         var address = obj.getOSCAddress();
-        var pending = function () { _this.refresh(address); };
-        if (this.fContent.getData(obj.getFile(), this.getElement(), pending))
-            return _super.prototype.updateSpecial.call(this, obj, oid);
+        this.fContent.getDataASync(obj.getFile(), this.getElement()).then(function (text) {
+            if (text) {
+                var obj_1 = INScore.objects().create(oid);
+                _this.refresh(obj_1.getOSCAddress());
+                var ret = _super.prototype.updateSpecial.call(_this, obj_1, oid);
+                INScore.objects().del(obj_1);
+                return ret;
+            }
+        });
         return false;
     };
     JSGMNfView.prototype.gmn2svg = function (obj, unused, page) {
@@ -1777,7 +2011,6 @@ var JSVideoView = /** @class */ (function (_super) {
             this.fVideo.currentTime = media.mdate;
         // video.fMLS       = this.fVideo.duration * 1000;
         // video.fVDuration = this.fVideo.duration / this.fVideo.playbackRate;
-        return true;
     };
     return JSVideoView;
 }(JSAutoSize));
@@ -1980,17 +2213,33 @@ var TSyncManager = /** @class */ (function () {
 }());
 ///<reference path="lib/guidoengine.ts"/>
 ///<reference path="lib/libmusicxml.ts"/>
+///<reference path="faust.ts"/>
 //----------------------------------------------------------------------------
 var libraries = /** @class */ (function () {
     function libraries() {
         this.fGuido = new GuidoEngine;
         this.fXMLLib = new libmusicxml;
+        this.fFaust = new faust;
     }
     libraries.prototype.initialise = function () {
         return __awaiter(this, void 0, void 0, function () {
-            var _this = this;
             return __generator(this, function (_a) {
-                return [2 /*return*/, this.guidoinit().then(function () { return _this.xmlinit(); })];
+                switch (_a.label) {
+                    case 0: 
+                    // return this.guidoinit().then ( 
+                    // 	() => { return this.xmlinit().then (); }
+                    // 	);
+                    return [4 /*yield*/, this.guidoinit()];
+                    case 1:
+                        // return this.guidoinit().then ( 
+                        // 	() => { return this.xmlinit().then (); }
+                        // 	);
+                        _a.sent();
+                        return [4 /*yield*/, this.xmlinit()];
+                    case 2:
+                        _a.sent();
+                        return [2 /*return*/, this.faustinit()];
+                }
             });
         });
     };
@@ -1999,10 +2248,7 @@ var libraries = /** @class */ (function () {
             var _this = this;
             return __generator(this, function (_a) {
                 return [2 /*return*/, new Promise(function (success, failure) {
-                        _this.fGuido.initialise().then(function () {
-                            console.log("GuidoEngine version " + _this.fGuido.getFloatVersion());
-                            success(_this);
-                        }, function () { _this.fGuido = null; success(_this); });
+                        _this.fGuido.initialise().then(function () { console.log("GuidoEngine version " + _this.fGuido.getFloatVersion()); success(_this); }, function () { _this.fGuido = null; success(_this); });
                     })];
             });
         });
@@ -2012,24 +2258,24 @@ var libraries = /** @class */ (function () {
             var _this = this;
             return __generator(this, function (_a) {
                 return [2 /*return*/, new Promise(function (success, failure) {
-                        _this.fXMLLib.initialise().then(function () {
-                            console.log("libMusicXML version " + _this.fXMLLib.libVersionStr());
-                            success(_this);
-                        }, function () { _this.fXMLLib = null; success(_this); });
+                        _this.fXMLLib.initialise().then(function () { console.log("libMusicXML version " + _this.fXMLLib.libVersionStr()); success(_this); }, function () { _this.fXMLLib = null; success(_this); });
                     })];
             });
         });
     };
-    // async faustinit():Promise<any> { 
-    // 	return new Promise( (success: any, failure: any) => {
-    // 		fFaust = new Faust2WebAudio.Faust({ debug: true, wasmLocation: "lib/faust/libfaust-wasm.wasm", dataLocation: "lib/faust/libfaust-wasm.data" });
-    // 		this.fFaust.ready.then ( 
-    // 			() => { console.log ("Faust version: " + fFaust.getLibFaustVersion()); success (this); },
-    // 		() => { this.fFaust = null; success(this); });
-    // 	}); 
-    // }
+    libraries.prototype.faustinit = function () {
+        return __awaiter(this, void 0, void 0, function () {
+            var _this = this;
+            return __generator(this, function (_a) {
+                return [2 /*return*/, new Promise(function (success, failure) {
+                        _this.fFaust.initialise().then(function () { console.log("Faust version " + _this.fFaust.version()); success(_this); }, function () { _this.fFaust = null; success(_this); });
+                    })];
+            });
+        });
+    };
     libraries.prototype.guido = function () { return this.fGuido; };
     libraries.prototype.xmllib = function () { return this.fXMLLib; };
+    libraries.prototype.faust = function () { return this.fFaust; };
     return libraries;
 }());
 var inscorelibs = new libraries();
@@ -2057,6 +2303,7 @@ var inscorelibs = new libraries();
 ///<reference path="JSSVGfView.ts"/>
 ///<reference path="JSAudioView.ts"/>
 ///<reference path="JSVideoView.ts"/>
+///<reference path="JSFaustView.ts"/>
 ///<reference path="TSyncManager.ts"/>
 ///<reference path="libraries.ts"/>
 //----------------------------------------------------------------------------
@@ -2140,6 +2387,9 @@ var JSViewFactory = /** @class */ (function () {
             case "audio":
                 view = new JSAudioView(parent);
                 break;
+            case "faust":
+                view = new JSFaustView(parent, inscorelibs.faust());
+                break;
             case "fileWatcher":
             case "graph":
             case "fastgraph":
@@ -2194,9 +2444,10 @@ var TConnection = /** @class */ (function () {
     TConnection.prototype.error = function () {
         var _this = this;
         var delay = 5;
-        console.log("Connection to " + this.fUrl + "failed");
+        console.log("Connection to " + this.fUrl + " failed");
         console.log("Retry to connect in " + delay + " seconds");
-        setTimeout(function () { _this.connect(_this.fUrl); }, delay * 1000);
+        setTimeout(function () { if (_this.fEventSrc)
+            _this.connect(_this.fUrl); }, delay * 1000);
     };
     TConnection.prototype.state = function () {
         if (this.fEventSrc)

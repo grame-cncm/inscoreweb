@@ -151,7 +151,7 @@ var InscoreEditor = /** @class */ (function () {
         $("#font-size").change(function (event) { _this.fEditor.getWrapperElement().style.fontSize = $("#font-size").val() + "px"; });
         $("#etheme").change(function (event) { _this.fEditor.setOption("theme", $("#etheme").val()); });
         $("#wraplines").change(function (event) { _this.fEditor.setOption("lineWrapping", $("#wraplines").is(":checked")); });
-        $("#run").click(function (event) { _this.setInscore(_this.fEditor.getValue()); });
+        $("#run").on("click", function (event) { _this.setInscore(_this.fEditor.getValue()); });
         $("#reset").click(function (event) { inscore.postMessageStr("/ITL/scene", "reset"); });
         $("#clear-log").click(function (event) { $("#logs").text(""); });
         $("#saveinscore").click(function (event) { _this.saveInscore(); });
@@ -160,7 +160,7 @@ var InscoreEditor = /** @class */ (function () {
         this.fEditor.getWrapperElement().style.fontSize = $("#font-size").val() + "px";
         this.fEditor.setOption("theme", $("#etheme").val());
         this.fEditor.setOption("lineWrapping", $("#wraplines").is(":checked"));
-        this.setInscore(this.fEditor.getValue(), this.fFileName);
+        // this.setInscore (this.fEditor.getValue(), this.fFileName);
         var logs = document.getElementById("logs");
         $("#log-font").click(function () { logs.style.fontFamily = _this.fontMenu2fontFamily($("#log-font").val()); });
         $("#log-size").click(function () { logs.style.fontSize = $("#log-size").val() + "px"; });
@@ -206,6 +206,8 @@ var InscoreEditor = /** @class */ (function () {
             inscore.loadInscore("/ITL parse v1;\n" + script, true);
         this.fEditor.setValue(script);
         this.fEditor.refresh();
+        localStorage.setItem("inscore", script);
+        localStorage.setItem("inscorePath", "saved-script." + ext);
     };
     InscoreEditor.prototype.drop = function (file) {
         var _this = this;
@@ -479,6 +481,7 @@ var EditorGlue = /** @class */ (function (_super) {
     //------------------------------------------------------------------------
     // scan the current location to detect parameters
     EditorGlue.prototype.scanOptions = function () {
+        var retcode = false;
         var options = this.scanUrl();
         var preview = false;
         for (var i = 0; (i < options.length) && !preview; i++) {
@@ -492,18 +495,20 @@ var EditorGlue = /** @class */ (function (_super) {
                 case "code":
                     editor.setInscore(atob(value));
                     if (preview)
-                        $("#fullscreen").click();
+                        $("#fullscreen").trigger("click");
                     preview = false;
+                    retcode = true;
                     break;
                 case "src":
                     oReq = new XMLHttpRequest();
                     if (preview)
-                        oReq.onload = function () { editor.setInscore(oReq.responseText, value); $("#fullscreen").click(); };
+                        oReq.onload = function () { editor.setInscore(oReq.responseText, value); $("#fullscreen").trigger("click"); };
                     else
                         oReq.onload = function () { editor.setInscore(oReq.responseText, value); };
                     oReq.open("get", value, true);
                     oReq.send();
                     preview = false;
+                    retcode = true;
                     break;
             }
         };
@@ -512,7 +517,8 @@ var EditorGlue = /** @class */ (function (_super) {
             _loop_1(i);
         }
         if (preview)
-            $("#fullscreen").click();
+            $("#fullscreen").trigger("click");
+        return retcode;
     };
     //------------------------------------------------------------------------
     // scan the current location to detect parameters
@@ -11944,7 +11950,16 @@ glue.start().then(function () {
     editor = new InscoreEditor("code");
     editor.initialize();
     $("#version").text(inscore.versionStr());
-    glue.scanOptions();
+    var content = glue.scanOptions();
+    if (!content) {
+        var script = localStorage.getItem("inscore");
+        if (!script)
+            load("Welcome", "examples/Welcome.inscore");
+        else {
+            var path = localStorage.getItem("inscorePath");
+            editor.setInscore(script, path);
+        }
+    }
     setTimeout(function () { return $("#loading").remove(); }, 500);
     var ua = window.navigator.userAgent;
     var warnuser = (ua.indexOf('MSIE ') >= 0) || (ua.indexOf('Trident') >= 0) || (ua.indexOf('Edge') >= 0);
@@ -11955,9 +11970,9 @@ glue.start().then(function () {
 });
 var showlog = function (status) {
     if (status)
-        $("#lognav").click();
+        $("#lognav").trigger("click");
     else
-        $("#editornav").click();
+        $("#editornav").trigger("click");
 };
 // CodeMirror, copyright (c) by Marijn Haverbeke and others
 // Distributed under an MIT license: https://codemirror.net/LICENSE
