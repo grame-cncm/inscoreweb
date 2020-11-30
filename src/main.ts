@@ -10,7 +10,16 @@ glue.start().then (() => {
 	editor = new InscoreEditor("code"); 
 	editor.initialize();
 	$("#version").text( inscore.versionStr() ); 
-	glue.scanOptions();
+	let content = glue.scanOptions();
+	if (!content) {
+		let script = localStorage.getItem ("inscore");
+		if (!script)
+			load ("Welcome", "examples/Welcome.inscore");
+		else {
+			let path = localStorage.getItem ("inscorePath");
+			editor.setInscore (script, path);			
+		}
+	}
 
 	setTimeout (() => $("#loading").remove(), 500);
 	var ua = window.navigator.userAgent;
@@ -24,8 +33,8 @@ glue.start().then (() => {
 
 var showlog = function(status: boolean) {
 	if (status)
-		$("#lognav").click();
+		$("#lognav").trigger("click");
 	else
-		$("#editornav").click();
+		$("#editornav").trigger("click");
 }
 
