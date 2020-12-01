@@ -118,25 +118,25 @@
 		/ITL/scene/$self/cp x "$x[-1.,1.]",
 		/ITL/scene/$self/cp y "$y[-1.,1.]",
 		/ITL/scene/faust1 FaustDSP_karplus_params_freq "$y[1320,110]",
-		/ITL/scene/p1 tempo "$x[5,120]"
+		/ITL/scene/p1 tempo "$x[5,320]"
 	);
 	ctrl2 =	( 
 		/ITL/scene/$self/cp x "$x[-1.,1.]",
 		/ITL/scene/$self/cp y "$y[-1.,1.]",
 		/ITL/scene/faust2 FaustDSP_karplus_params_freq "$y[1320,110]",
-		/ITL/scene/p2 tempo "$x[5,120]"
+		/ITL/scene/p2 tempo "$x[5,320]"
 	);
 	ctrl3 =	( 
 		/ITL/scene/$self/cp x "$x[-1.,1.]",
 		/ITL/scene/$self/cp y "$y[-1.,1.]",
 		/ITL/scene/faust3 FaustDSP_karplus_params_freq "$y[1320,110]",
-		/ITL/scene/p3 tempo "$x[5,120]"
+		/ITL/scene/p3 tempo "$x[5,320]"
 	);
 	ctrl4 =	( 
 		/ITL/scene/$self/cp x "$x[-1.,1.]",
 		/ITL/scene/$self/cp y "$y[-1.,1.]",
 		/ITL/scene/faust4 FaustDSP_karplus_params_freq "$y[1320,110]",
-		/ITL/scene/p4 tempo "$x[5,120]"
+		/ITL/scene/p4 tempo "$x[5,320]"
 	);
 
 	/ITL/scene/cp1m watch mouseDown $ctrl1;
