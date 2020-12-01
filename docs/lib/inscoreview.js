@@ -315,8 +315,8 @@ var JSObjectView = /** @class */ (function () {
     // mouse events handlers and update
     JSObjectView.prototype.getPoints = function (event) {
         var div = this.getElement();
-        var x = (event.offsetX / div.clientWidth * 2) - 1;
-        var y = (event.offsetY / div.clientHeight * 2) - 1;
+        var x = Math.min(Math.max((event.offsetX / div.clientWidth), 0), div.clientWidth);
+        var y = Math.min(Math.max((event.offsetY / div.clientHeight), 0), div.clientHeight);
         var pdiv = div.parentElement;
         var r = pdiv.getBoundingClientRect();
         var sx = ((event.clientX - r.left) / pdiv.clientWidth * 2) - 1;
@@ -330,8 +330,9 @@ var JSObjectView = /** @class */ (function () {
         return (event.offsetX >= 0) && (event.offsetY >= 0) && (event.offsetX <= div.clientWidth) && (event.offsetY <= div.clientHeight);
     };
     JSObjectView.prototype.notify = function (event, id, dest) {
-        // event.stopImmediatePropagation();
-        // event.preventDefault();
+        event.stopImmediatePropagation();
+        event.stopPropagation();
+        event.preventDefault();
         if (!this.accept(event, id))
             return;
         if ((id == kMouseMoveID) && (event.buttons != 1))
@@ -383,19 +384,19 @@ var JSObjectView = /** @class */ (function () {
         if (events.watchMouseDown)
             div.onmousedown = function (event) { _this.notify(event, kMouseDownID, dest); };
         else
-            div.onmousedown = null;
+            div.onmousedown = function (event) { event.preventDefault(); event.stopImmediatePropagation(); };
         if (events.watchMouseUp)
             div.onmouseup = function (event) { _this.notify(event, kMouseUpID, dest); };
         else
-            div.onmouseup = null;
+            div.onmouseup = function (event) { event.preventDefault(); event.stopImmediatePropagation(); };
         if (events.watchMouseMove)
             div.onmousemove = function (event) { _this.notify(event, kMouseMoveID, dest); };
         else
-            div.onmousemove = null;
+            div.onmousemove = function (event) { event.preventDefault(); event.stopImmediatePropagation(); };
         if (events.watchMouseDClick)
             div.ondblclick = function (event) { _this.notify(event, kMouseDClickID, dest); };
         else
-            div.ondblclick = null;
+            div.ondblclick = function (event) { event.preventDefault(); event.stopImmediatePropagation(); };
     };
     //------------------------------------------------------------------------------------
     // update effects
