@@ -178,6 +178,7 @@ var JSObjectView = /** @class */ (function () {
         this.fElement = elt;
         this.fSyncManager = null;
         this.fIObject = 0;
+        this.fOrigin = { x: 0, y: 0 };
         if (parent)
             parent.getElement().appendChild(elt);
         if (absolute)
@@ -215,7 +216,7 @@ var JSObjectView = /** @class */ (function () {
         var pscale = parent ? parent.parentScale() : 1;
         return pscale;
     };
-    JSObjectView.prototype.getScale = function (pos) { return pos.scale * this.parentScale(); };
+    JSObjectView.prototype.getScale = function (scale) { return scale * this.parentScale(); };
     // the ratio applied in synchronisation mode to preserve the slave proportions
     JSObjectView.prototype.parentSyncRatio = function () {
         var div = this.getElement();
@@ -224,9 +225,6 @@ var JSObjectView = /** @class */ (function () {
         return 1;
     };
     JSObjectView.prototype.getSyncRatio = function () { return this.getParent().parentSyncRatio(); };
-    JSObjectView.prototype.refresh = function (address) {
-        inscore.delayMessage(address, inscore.newMessageM("refresh"));
-    };
     //---------------------------------------------------------------------
     // update methods
     //---------------------------------------------------------------------
@@ -274,9 +272,12 @@ var JSObjectView = /** @class */ (function () {
     };
     JSObjectView.prototype.getPos = function (pos) {
         var ppos = this.getParent().getOrigin();
-        var scale = this.getScale(pos);
-        var x = ppos.x + this.relative2SceneWidth(pos.x) - (this.getElement().offsetWidth * (1 + pos.xorigin * scale) / 2);
-        var y = ppos.y + this.relative2SceneHeight(pos.y) - (this.getElement().offsetHeight * (1 + pos.yorigin * scale) / 2);
+        var scale = this.getScale(pos.scale);
+        var div = this.getElement();
+        var x = ppos.x + this.relative2SceneWidth(pos.x) - (div.offsetWidth * (1 + pos.xorigin * scale) / 2);
+        var y = ppos.y + this.relative2SceneHeight(pos.y) - (div.offsetHeight * (1 + pos.yorigin * scale) / 2);
+        this.fOrigin.x = pos.xorigin;
+        this.fOrigin.y = pos.yorigin;
         return { x: x, y: y };
     };
     JSObjectView.prototype.updatePosition = function (pos, elt) {
@@ -295,7 +296,7 @@ var JSObjectView = /** @class */ (function () {
     };
     JSObjectView.prototype.getTransform = function (pos) {
         var transform = "";
-        var scale = this.getScale(pos);
+        var scale = this.getScale(pos.scale);
         if (scale != 1)
             transform += "scale(" + scale + "," + scale + ") ";
         if (pos.xangle)
@@ -315,13 +316,19 @@ var JSObjectView = /** @class */ (function () {
     // mouse events handlers and update
     JSObjectView.prototype.getPoints = function (event) {
         var div = this.getElement();
-        var x = Math.min(Math.max((event.offsetX / div.clientWidth), 0), div.clientWidth);
-        var y = Math.min(Math.max((event.offsetY / div.clientHeight), 0), div.clientHeight);
+        var relx = event.offsetX / div.clientWidth;
+        var rely = event.offsetY / div.clientHeight;
+        var x = 0.5 + (0.5 * this.fOrigin.x) - relx;
+        if (x < 0)
+            x = -x; // make sure the position is the relative distance to the origin
+        var y = 0.5 + (0.5 * this.fOrigin.y) - rely;
+        if (y < 0)
+            y = -y; // make sure the position is the relative distance to the origin
         var pdiv = div.parentElement;
         var r = pdiv.getBoundingClientRect();
         var sx = ((event.clientX - r.left) / pdiv.clientWidth * 2) - 1;
         var sy = ((event.clientY - r.top) / pdiv.clientHeight * 2) - 1;
-        return { relative: { x: x, y: y }, obj: { x: event.offsetX, y: event.offsetY }, scene: { x: sx, y: sy } };
+        return { relative: { x: x, y: y }, obj: { x: relx, y: rely }, scene: { x: sx, y: sy } };
     };
     JSObjectView.prototype.accept = function (event, id) {
         if (id == kMouseLeaveID)
@@ -370,33 +377,46 @@ var JSObjectView = /** @class */ (function () {
         inscore.msgAddF(msg, p.scene.y);
         inscore.postMessage(dest, msg);
     };
+    JSObjectView.prototype.defaultEvent = function (event) { event.preventDefault(); event.stopImmediatePropagation(); };
+    ;
+    JSObjectView.prototype.initEvents = function (dest) {
+        this.updateEvents({
+            watchMouseEnter: false,
+            watchMouseLeave: false,
+            watchMouseMove: false,
+            watchMouseDown: false,
+            watchMouseUp: false,
+            watchMouseDClick: false
+        }, dest);
+    };
+    ;
     JSObjectView.prototype.updateEvents = function (events, dest) {
         var _this = this;
         var div = this.getElement();
         if (events.watchMouseEnter)
             div.onmouseenter = function (event) { _this.notify(event, kMouseEnterID, dest); };
         else
-            div.onmouseenter = null;
+            div.onmouseenter = function (event) { return _this.defaultEvent(event); };
         if (events.watchMouseLeave)
             div.onmouseleave = function (event) { _this.notify(event, kMouseLeaveID, dest); };
         else
-            div.onmouseleave = null;
+            div.onmouseleave = function (event) { return _this.defaultEvent(event); };
         if (events.watchMouseDown)
             div.onmousedown = function (event) { _this.notify(event, kMouseDownID, dest); };
         else
-            div.onmousedown = function (event) { event.preventDefault(); event.stopImmediatePropagation(); };
+            div.onmousedown = function (event) { return _this.defaultEvent(event); };
         if (events.watchMouseUp)
             div.onmouseup = function (event) { _this.notify(event, kMouseUpID, dest); };
         else
-            div.onmouseup = function (event) { event.preventDefault(); event.stopImmediatePropagation(); };
+            div.onmouseup = function (event) { return _this.defaultEvent(event); };
         if (events.watchMouseMove)
             div.onmousemove = function (event) { _this.notify(event, kMouseMoveID, dest); };
         else
-            div.onmousemove = function (event) { event.preventDefault(); event.stopImmediatePropagation(); };
+            div.onmousemove = function (event) { return _this.defaultEvent(event); };
         if (events.watchMouseDClick)
             div.ondblclick = function (event) { _this.notify(event, kMouseDClickID, dest); };
         else
-            div.ondblclick = function (event) { event.preventDefault(); event.stopImmediatePropagation(); };
+            div.ondblclick = function (event) { return _this.defaultEvent(event); };
     };
     //------------------------------------------------------------------------------------
     // update effects
@@ -439,15 +459,14 @@ var JSObjectView = /** @class */ (function () {
     // called to update object size on model side
     JSObjectView.prototype.updateObjectSize = function (objid, w, h) {
         var obj = INScore.objects().create(objid);
-        var div = this.getElement();
-        obj.updateWidth(this.scene2RelativeWidth(w));
-        obj.updateHeight(this.scene2RelativeHeight(h));
-        obj.updateViewBoundingRect(div.clientLeft, div.clientTop, w, h),
-            INScore.objects().del(obj);
+        this.updateObjectSizeSync(obj, w, h);
+        INScore.objects().del(obj);
     };
     JSObjectView.prototype.updateObjectSizeSync = function (obj, w, h) {
         obj.updateWidth(this.scene2RelativeWidth(w));
         obj.updateHeight(this.scene2RelativeHeight(h));
+        var div = this.getElement();
+        obj.updateViewBoundingRect(div.clientLeft, div.clientTop, w, h);
     };
     //---------------------------------------------------------------------
     // utilities
@@ -641,35 +660,45 @@ var JSArcView = /** @class */ (function (_super) {
     return JSArcView;
 }(JSSvgBase));
 ///<reference path="JSObjectView.ts"/>
+var TASyncUpdate = /** @class */ (function () {
+    function TASyncUpdate() {
+    }
+    TASyncUpdate.update = function (oid, f) {
+        var obj = INScore.objects().create(oid);
+        var ret = f(obj);
+        INScore.objects().del(obj);
+        return ret;
+    };
+    return TASyncUpdate;
+}());
+///<reference path="JSObjectView.ts"/>
+///<reference path="TASyncUpdate.ts"/>
 var JSAutoSize = /** @class */ (function (_super) {
     __extends(JSAutoSize, _super);
     function JSAutoSize(elt, parent) {
-        var _this = _super.call(this, elt, parent) || this;
-        _this.fSizeSynced = false;
-        elt.style.height = "auto";
-        elt.style.width = "auto";
-        return _this;
+        return _super.call(this, elt, parent) || this;
+        // elt.style.height = "auto";
+        // elt.style.width  = "auto";
     }
-    JSAutoSize.prototype.updateSpecial = function (obj, objid) {
-        return this.waitForSize(objid);
-    };
     JSAutoSize.prototype.getAutoSize = function () {
         var elt = this.getElement();
         return { x: elt.clientWidth, y: elt.clientHeight };
     };
-    JSAutoSize.prototype.waitForSize = function (objid) {
+    JSAutoSize.prototype.updateSizeSync = function (obj) {
+        var p = this.getAutoSize();
+        this.updateObjectSizeSync(obj, p.x, p.y);
+        obj.ready();
+        return true;
+    };
+    JSAutoSize.prototype.updateSizeASync = function (objid) {
         var _this = this;
-        if (!this.fSizeSynced) {
-            var size = this.getAutoSize();
-            if (!size.x || !size.y)
-                setTimeout(function () { return _this.waitForSize(objid); }, 50);
-            else {
-                this.updateObjectSize(objid, size.x, size.y);
-                this.fSizeSynced = true;
-                JSObjectView.updateObjectView(this.getId(), objid, true);
-            }
+        var size = this.getAutoSize();
+        if (!size.x || !size.y)
+            setTimeout(function () { return _this.updateSizeASync(objid); }, 20);
+        else {
+            return TASyncUpdate.update(objid, function (obj) { return _this.updateSizeSync(obj); });
         }
-        return this.fSizeSynced;
+        return false;
     };
     return JSAutoSize;
 }(JSObjectView));
@@ -688,7 +717,7 @@ var JSAudioView = /** @class */ (function (_super) {
     JSAudioView.prototype.clone = function (parent) { return new JSAudioView(parent); };
     JSAudioView.prototype.updateSpecial = function (obj, objid) {
         this.fAudio.src = obj.getFile();
-        return _super.prototype.updateSpecial.call(this, obj, objid);
+        return this.updateSizeASync(objid);
     };
     JSAudioView.prototype.setShadow = function (elt, val) {
         this.fAudio.style.filter = "drop-shadow(" + val.color + " " + val.xOffset + "px " + val.yOffset + "px " + val.blur + "px)";
@@ -932,7 +961,6 @@ var JSFaustView = /** @class */ (function (_super) {
             _this.fVoices = voices;
             var obj = INScore.objects().create(oid);
             if (!node) {
-                "";
                 var address = obj.getOSCAddress();
                 _this.error(address, "Cannot compile " + address + ".");
                 return JSFaustView.kFailed;
@@ -986,14 +1014,15 @@ var GuidoEngine = /** @class */ (function () {
     }
     GuidoEngine.prototype.initialise = function () {
         return __awaiter(this, void 0, void 0, function () {
+            var module;
             var _this = this;
             return __generator(this, function (_a) {
-                // var module = GuidoModule();
+                module = GuidoModule();
                 return [2 /*return*/, new Promise(function (success, failure) {
-                        GuidoModule().then(function (module) {
+                        module['onRuntimeInitialized'] = function () {
                             _this.moduleInit(module);
                             success(_this);
-                        });
+                        };
                     })];
             });
         });
@@ -1263,7 +1292,6 @@ var JSGMNView = /** @class */ (function (_super) {
     JSGMNView.prototype.toString = function () { return "JSGMNView"; };
     JSGMNView.prototype.updateSVGDimensions = function (w, h) { };
     JSGMNView.prototype.guido = function () { return this.fGuido; };
-    JSGMNView.prototype.ready = function () { return this.fGR != null; };
     JSGMNView.prototype["delete"] = function () {
         if (this.fGR) {
             this.fGuido.freeGR(this.fGR);
@@ -1281,6 +1309,7 @@ var JSGMNView = /** @class */ (function (_super) {
     // scaled to get a size similar to native app
     JSGMNView.prototype.parentScale = function () { return this.getParent().parentScale() * this.fScalingFactor; };
     JSGMNView.prototype.gmn2svg = function (obj, gmn, page) {
+        var ret = false;
         var ar = this.string2Ar(obj, gmn);
         if (ar) {
             var gr = this.fGuido.ar2gr(ar);
@@ -1294,28 +1323,28 @@ var JSGMNView = /** @class */ (function (_super) {
                 this.fGuido.freeGR(this.fGR);
                 this.fGuido.freeAR(this.fAR);
             }
-            else {
-                var address = obj.getOSCAddress();
-                this.refresh(address);
-            }
             this.fGR = gr;
             this.fAR = ar;
             this.fPage = page;
-            return true;
+            ret = true;
         }
         else
             console.error(obj.getOSCAddress() + " failed to parse gmn code.");
-        return false;
+        obj.ready();
+        return ret;
     };
-    JSGMNView.prototype.updateSpecial = function (obj, oid) {
-        var guido = obj.getGuidoInfos();
+    JSGMNView.prototype.checkGuido = function () {
         if (!this.fGuido) {
             console.log("Guido engine is not available");
             return false;
         }
-        if (this.gmn2svg(obj, guido.code, guido.page))
-            return _super.prototype.updateSpecial.call(this, obj, oid);
-        return false;
+        return true;
+    };
+    JSGMNView.prototype.updateSpecial = function (obj, oid) {
+        if (!this.checkGuido())
+            return false;
+        var guido = obj.getGuidoInfos();
+        return this.gmn2svg(obj, guido.code, guido.page);
     };
     // this method is called by the model to update the map synchronously
     JSGMNView.getMapping = function (mapname, id, oid) {
@@ -1335,10 +1364,12 @@ var JSGMNView = /** @class */ (function (_super) {
             return this.fGuido.getPageMap(this.fGR, this.fPage, width, height);
         if (mapname == "system")
             return this.fGuido.getSystemMap(this.fGR, this.fPage, width, height);
+        if (mapname == "")
+            return this.fGuido.getStaffMap(this.fGR, this.fPage, width, height, 1);
         var m = this.scanMap(mapname);
         if (m.name == "staff")
             return this.fGuido.getStaffMap(this.fGR, this.fPage, width, height, m.index);
-        else if (m.name == "voice")
+        if (m.name == "voice")
             return this.fGuido.getVoiceMap(this.fGR, this.fPage, width, height, m.index);
         return null;
     };
@@ -1441,91 +1472,34 @@ var TFileLoader = /** @class */ (function () {
             obj.addEventListener("error", function () { console.log("can't open file " + file); failure(null); });
             obj.addEventListener("load", function () {
                 var content = TFileLoader.getContent(obj);
-                resolve(content);
+                if (content)
+                    resolve(content);
+                else
+                    failure(null);
             });
         });
     };
     return TFileLoader;
 }());
-///<reference path="TFileLoader.ts"/>
-var TFileBased = /** @class */ (function () {
-    function TFileBased() {
-        this.fContent = null;
-    }
-    TFileBased.prototype.getData = function (file, div, pending) {
-        var _this = this;
-        if (pending === void 0) { pending = null; }
-        if (this.fContent == null)
-            return true; // error while loading file, don't try again
-        if (this.fContent.length)
-            return true; // done - content is available
-        TFileLoader.load(div, file).then(function (text) {
-            _this.fContent = text;
-            if (pending)
-                pending();
-        });
-        return false;
-    };
-    TFileBased.prototype.getDataASync = function (file, div) {
-        return __awaiter(this, void 0, void 0, function () {
-            var _a;
-            return __generator(this, function (_b) {
-                switch (_b.label) {
-                    case 0:
-                        _a = this;
-                        return [4 /*yield*/, TFileLoader.load(div, file)];
-                    case 1:
-                        _a.fContent = _b.sent();
-                        return [2 /*return*/, this.fContent];
-                }
-            });
-        });
-    };
-    TFileBased.prototype.get = function () {
-        var content = "";
-        if (this.fContent) {
-            content = this.fContent;
-            this.fContent = "";
-        }
-        return content;
-    };
-    return TFileBased;
-}());
 ///<reference path="JSGMNView.ts"/>
-///<reference path="TFileBased.ts"/>
+///<reference path="TASyncUpdate.ts"/>
+///<reference path="TFileLoader.ts"/>
 var JSGMNfView = /** @class */ (function (_super) {
     __extends(JSGMNfView, _super);
     function JSGMNfView() {
-        var _this = _super !== null && _super.apply(this, arguments) || this;
-        _this.fContent = new TFileBased;
-        return _this;
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     JSGMNfView.prototype.toString = function () { return "JSGMNfView"; };
-    // oldupdateSpecial(obj: INScoreObject, oid: number)	: boolean {
-    //     let address = obj.getOSCAddress();
-    //     let pending = (): void => { this.refresh (address); };
-    // 	if (this.fContent.getData (obj.getFile(), this.getElement(), pending)) 
-    // 		return super.updateSpecial (obj, oid);
-    // 	return false;
-    // }
     JSGMNfView.prototype.updateSpecial = function (obj, oid) {
         var _this = this;
-        var address = obj.getOSCAddress();
-        this.fContent.getDataASync(obj.getFile(), this.getElement()).then(function (text) {
+        if (!this.checkGuido())
+            return false;
+        var guido = obj.getGuidoInfos();
+        TFileLoader.load(this.getElement(), obj.getFile()).then(function (text) {
             if (text) {
-                var obj_1 = INScore.objects().create(oid);
-                _this.refresh(obj_1.getOSCAddress());
-                var ret = _super.prototype.updateSpecial.call(_this, obj_1, oid);
-                INScore.objects().del(obj_1);
-                return ret;
+                return TASyncUpdate.update(oid, function (obj) { return _this.gmn2svg(obj, text, guido.page); });
             }
         });
-        return false;
-    };
-    JSGMNfView.prototype.gmn2svg = function (obj, unused, page) {
-        var gmn = this.fContent.get();
-        if (gmn)
-            return _super.prototype.gmn2svg.call(this, obj, gmn, page);
         return false;
     };
     return JSGMNfView;
@@ -1538,9 +1512,13 @@ var JSHtmlView = /** @class */ (function (_super) {
         _this.getElement().className = "inscore-html";
         return _this;
     }
-    JSHtmlView.prototype.clone = function (parent) { return new JSHtmlView(parent); };
+    JSHtmlView.prototype.clone = function (parent) {
+        var obj = new JSHtmlView(parent);
+        obj.getElement().innerHTML = this.getElement().innerHTML;
+        return obj;
+    };
     JSHtmlView.prototype.toString = function () { return "JSHtmlView"; };
-    // CSS weight are used as numbers
+    // CSS weight are numbers
     JSHtmlView.fontWeight2Num = function (weight) {
         switch (weight) {
             case "normal": return "400";
@@ -1551,12 +1529,15 @@ var JSHtmlView = /** @class */ (function (_super) {
             default: return "400";
         }
     };
+    JSHtmlView.prototype.updateDimensions = function (pos) { };
     JSHtmlView.prototype.setFont = function (font) {
         var elt = this.getElement();
+        var prev = elt.style.fontSize;
         elt.style.fontSize = font.size + "px";
         elt.style.fontFamily = font.family;
         elt.style.fontStyle = font.style;
         elt.style.fontWeight = JSHtmlView.fontWeight2Num(font.weight);
+        return elt.style.fontSize != prev;
     };
     JSHtmlView.prototype.removeEffect = function (elt) {
         elt.style.filter = "blur(0px)";
@@ -1570,12 +1551,11 @@ var JSHtmlView = /** @class */ (function (_super) {
         elt.style.filter = "blur(0px)";
         elt.style.textShadow = val.color + " " + val.xOffset + "px " + val.yOffset + "px " + val.blur + "px";
     };
-    // don't update text dimensions
-    JSHtmlView.prototype.updateDimensions = function (pos) { };
     JSHtmlView.prototype.updateSpecific = function (obj) {
-        this.setFont(obj.getTextInfos());
+        if (this.setFont(obj.getTextInfos())) {
+            this.updateSizeSync(obj);
+        }
     };
-    JSHtmlView.prototype.getText = function (infos) { return infos.text; };
     JSHtmlView.prototype.updateEvents = function (events, dest) {
         _super.prototype.updateEvents.call(this, events, dest);
         var div = this.getElement();
@@ -1584,34 +1564,35 @@ var JSHtmlView = /** @class */ (function (_super) {
         else
             this.getElement().style.cursor = "default";
     };
+    JSHtmlView.prototype.setHtml = function (obj, content) {
+        this.getElement().innerHTML = content;
+        return this.updateSizeSync(obj);
+    };
+    JSHtmlView.prototype.getText = function (text) { return text; };
     JSHtmlView.prototype.updateSpecial = function (obj, objid) {
         var infos = obj.getTextInfos();
-        this.getElement().innerHTML = this.getText(infos);
-        this.setFont(infos);
-        _super.prototype.updateSpecial.call(this, obj, objid);
+        this.setHtml(obj, this.getText(infos.text));
         return true;
     };
     return JSHtmlView;
 }(JSAutoSize));
 ///<reference path="JSHtmlView.ts"/>
-///<reference path="TFileBased.ts"/>
+///<reference path="TFileLoader.ts"/>
+///<reference path="TASyncUpdate.ts"/>
 var JSHtmlfView = /** @class */ (function (_super) {
     __extends(JSHtmlfView, _super);
     function JSHtmlfView() {
-        var _this = _super !== null && _super.apply(this, arguments) || this;
-        _this.fContent = new TFileBased;
-        return _this;
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     JSHtmlfView.prototype.toString = function () { return "JSHtmlfView"; };
     JSHtmlfView.prototype.updateSpecial = function (obj, oid) {
-        var address = obj.getOSCAddress();
-        var pending = function () { inscore.postMessageStr(address, "refresh"); };
-        if (this.fContent.getData(obj.getFile(), this.getElement(), pending))
-            return _super.prototype.updateSpecial.call(this, obj, oid);
+        var _this = this;
+        TFileLoader.load(this.getElement(), obj.getFile()).then(function (text) {
+            if (text) {
+                return TASyncUpdate.update(oid, function (obj) { _this.setHtml(obj, text); return true; });
+            }
+        });
         return false;
-    };
-    JSHtmlfView.prototype.getText = function (infos) {
-        return this.fContent.get();
     };
     return JSHtmlfView;
 }(JSHtmlView));
@@ -1627,6 +1608,7 @@ var JSImageView = /** @class */ (function (_super) {
         div.appendChild(img);
         _this = _super.call(this, div, parent) || this;
         _this.fImage = img;
+        _this.fScale = 1;
         _this.getElement().className = "inscore-img";
         return _this;
     }
@@ -1636,12 +1618,20 @@ var JSImageView = /** @class */ (function (_super) {
         return img;
     };
     JSImageView.prototype.updateDimensions = function (pos) { }; // don't update image dimensions (use scale)
+    // image scale is relative to the parent, by default fill the parent element (scale 1) 
+    JSImageView.prototype.getScale = function (scale) {
+        var elt = this.getElement().parentElement;
+        var rw = this.fImage.clientWidth / elt.clientWidth;
+        var rh = this.fImage.clientHeight / elt.clientHeight;
+        this.fScale = scale / Math.max(rw, rh);
+        return this.fScale;
+    };
     JSImageView.prototype.toString = function () { return "JSImageView"; };
     JSImageView.prototype.getSyncRatio = function () { return 1; }; // no scaling for images, appearance is already preserved 
     JSImageView.prototype.getAutoSize = function () { return { x: this.fImage.clientWidth, y: this.fImage.clientHeight }; };
     JSImageView.prototype.updateSpecial = function (obj, objid) {
         this.fImage.src = obj.getFile();
-        return _super.prototype.updateSpecial.call(this, obj, objid);
+        return this.updateSizeASync(objid);
     };
     JSImageView.prototype.setShadow = function (elt, val) {
         this.fImage.style.boxShadow = val.xOffset + "px " + val.yOffset + "px " + val.blur + "px " + val.color;
@@ -1658,6 +1648,7 @@ var JSLayerView = /** @class */ (function (_super) {
     }
     JSLayerView.prototype.clone = function (parent) { return new JSLayerView(parent); };
     JSLayerView.prototype.toString = function () { return "JSLayerView"; };
+    JSLayerView.prototype.parentScale = function () { return 1; };
     return JSLayerView;
 }(JSObjectView));
 ///<reference path="JSSVGBase.ts"/>
@@ -1714,10 +1705,8 @@ var JSPianoRollView = /** @class */ (function (_super) {
     }
     JSPianoRollView.prototype.clone = function (parent) { return new JSPianoRollView(parent, this.guido()); };
     JSPianoRollView.prototype.toString = function () { return "JSPianoRollView"; };
-    JSPianoRollView.prototype.date2string = function (date) { return date.num + "/" + date.denum; };
-    JSPianoRollView.prototype.getGmn = function (proll) { return proll.code; };
-    JSPianoRollView.prototype.proll2svg = function (obj, proll) {
-        var ar = this.parse(this.getGmn(proll));
+    JSPianoRollView.prototype.proll2svg = function (obj, proll, gmn) {
+        var ar = this.parse(gmn); //(this.getGmn(proll));
         if (ar) {
             var guido = this.guido();
             var pr = guido.ar2PianoRoll(PianoRollType.kSimplePianoRoll, ar);
@@ -1733,46 +1722,39 @@ var JSPianoRollView = /** @class */ (function (_super) {
             this.fSVG.innerHTML = svg;
             this.guido().destroyPianoRoll(pr);
             this.guido().freeAR(ar);
+            obj.ready();
             return true;
         }
         return false;
     };
     JSPianoRollView.prototype.updateSpecial = function (obj, oid) {
+        if (!this.checkGuido())
+            return false;
         var proll = obj.getPianorollInfos();
-        if (this.guido()) {
-            if (this.proll2svg(obj, proll)) {
-                var bb = this.fSVG.getBBox();
-                this.updateObjectSizeSync(obj, bb.width + bb.x, bb.height + bb.y);
-                return true;
-            }
-        }
-        else
-            console.log("Guido engine is not available");
-        return false;
+        return this.proll2svg(obj, proll, proll.code);
     };
     return JSPianoRollView;
 }(JSGMNView));
 ///<reference path="JSPianoRollView.ts"/>
-///<reference path="TFileBased.ts"/>
+///<reference path="TFileLoader.ts"/>
+///<reference path="TASyncUpdate.ts"/>
 var JSPianoRollfView = /** @class */ (function (_super) {
     __extends(JSPianoRollfView, _super);
     function JSPianoRollfView() {
-        var _this = _super !== null && _super.apply(this, arguments) || this;
-        _this.fContent = new TFileBased;
-        return _this;
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     JSPianoRollfView.prototype.toString = function () { return "JSPianoRollfView"; };
     JSPianoRollfView.prototype.updateSpecial = function (obj, oid) {
         var _this = this;
-        var address = obj.getOSCAddress();
-        var pending = function () { _this.refresh(address); };
-        if (this.fContent.getData(obj.getFile(), this.getElement(), pending))
-            return _super.prototype.updateSpecial.call(this, obj, oid);
+        if (!this.checkGuido())
+            return false;
+        var proll = obj.getPianorollInfos();
+        TFileLoader.load(this.getElement(), obj.getFile()).then(function (text) {
+            if (text) {
+                return TASyncUpdate.update(oid, function (obj) { return _this.proll2svg(obj, proll, text); });
+            }
+        });
         return false;
-    };
-    JSPianoRollfView.prototype.getGmn = function (proll) {
-        var gmn = this.fContent.get();
-        return (gmn) ? gmn : "";
     };
     return JSPianoRollfView;
 }(JSPianoRollView));
@@ -1845,38 +1827,41 @@ var JSSVGView = /** @class */ (function (_super) {
     JSSVGView.prototype.clone = function (parent) { return new JSSVGView(parent); };
     JSSVGView.prototype.toString = function () { return "JSSVGView"; };
     JSSVGView.prototype.getSVGTarget = function () { return this.fSVG; };
-    JSSVGView.prototype.updateSVGDimensions = function (w, h) { };
+    JSSVGView.prototype.updateSVGDimensions = function (w, h) {
+        if (!this.fSVG.viewBox.baseVal.width) {
+            // set viewBox here dimensions are incorrect at content setting 
+            this.fSVG.setAttribute("viewBox", 0 + " " + 0 + " " + w + " " + h);
+        }
+    };
     JSSVGView.prototype.updatePenControl = function (pen) { this.updateRegularPen(pen); };
-    JSSVGView.prototype.getSvg = function (obj) { return obj.getSVGInfos(); };
-    JSSVGView.prototype.updateSpecial = function (obj, oid) {
-        var svg = this.getSvg(obj);
-        this.fSVG.innerHTML = svg;
+    JSSVGView.prototype.setSvg = function (obj, content) {
+        this.fSVG.innerHTML = content;
         var bb = this.fSVG.getBBox();
         this.updateObjectSizeSync(obj, bb.width + bb.x, bb.height + bb.y);
+        obj.ready();
         return true;
+    };
+    JSSVGView.prototype.updateSpecial = function (obj, oid) {
+        return this.setSvg(obj, obj.getSVGInfos());
     };
     return JSSVGView;
 }(JSSvgBase));
 ///<reference path="JSSVGView.ts"/>
-///<reference path="TFileBased.ts"/>
+///<reference path="TFileLoader.ts"/>
+///<reference path="TASyncUpdate.ts"/>
 var JSSVGfView = /** @class */ (function (_super) {
     __extends(JSSVGfView, _super);
     function JSSVGfView() {
-        var _this = _super !== null && _super.apply(this, arguments) || this;
-        _this.fContent = new TFileBased;
-        return _this;
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     JSSVGfView.prototype.toString = function () { return "JSSVGfView"; };
-    JSSVGfView.prototype.getSvg = function (obj) {
-        var svg = this.fContent.get();
-        return svg ? svg : "";
-    };
     JSSVGfView.prototype.updateSpecial = function (obj, oid) {
         var _this = this;
-        var address = obj.getOSCAddress();
-        var pending = function () { _this.refresh(address); };
-        if (this.fContent.getData(obj.getFile(), this.getElement(), pending))
-            return _super.prototype.updateSpecial.call(this, obj, oid);
+        TFileLoader.load(this.getElement(), obj.getFile()).then(function (text) {
+            if (text) {
+                return TASyncUpdate.update(oid, function (obj) { return _this.setSvg(obj, text); });
+            }
+        });
         return false;
     };
     return JSSVGfView;
@@ -1897,6 +1882,7 @@ var JSSceneView = /** @class */ (function (_super) {
         // for a yet unknown reason, removing the next line result in incorrect
         // children positionning (like if position becomes relative to the window)
         div.style.filter = "blur(0px)";
+        _this.fFullScreen = false;
         return _this;
     }
     JSSceneView.prototype.clone = function (parent) { return null; };
@@ -1917,9 +1903,45 @@ var JSSceneView = /** @class */ (function (_super) {
         var scale = Math.min(div.clientWidth, div.clientHeight) / screenref * 2;
         return scale;
     };
-    JSSceneView.prototype.getScale = function (pos) { return pos.scale; };
+    JSSceneView.prototype.getScale = function (scale) { return scale; };
     JSSceneView.prototype.parentWidth = function () { return this.getElement().parentElement.offsetWidth; };
     JSSceneView.prototype.parentHeight = function () { return this.getElement().parentElement.offsetHeight; };
+    JSSceneView.closeFullscreen = function () {
+        var elt = document;
+        if (elt.exitFullscreen) {
+            elt.exitFullscreen();
+        }
+        else if (elt.webkitExitFullscreen) { /* Safari */
+            elt.webkitExitFullscreen();
+        }
+        else if (elt.msExitFullscreen) { /* IE11 */
+            elt.msExitFullscreen();
+        }
+    };
+    JSSceneView.enterFullscreen = function (elt) {
+        if (elt.requestFullscreen) {
+            elt.requestFullscreen();
+        }
+        else if (elt.webkitRequestFullscreen) { /* Safari */
+            elt.webkitRequestFullscreen();
+        }
+        else if (elt.msRequestFullscreen) { /* IE11 */
+            elt.msRequestFullscreen();
+        }
+    };
+    JSSceneView.prototype.updateSpecific = function (obj) {
+        var fullscreen = obj.getSceneInfos().fullscreen;
+        // there is an issue with the fullscreen mode
+        // with standard use, the model is not informed of the fullscreen mode exit
+        // if (fullscreen && !this.fFullScreen) {
+        // 	this.enterFullscreen(this.getElement() as fsElement);
+        // 	this.fFullScreen = true;
+        // }
+        // else if (!fullscreen && this.fFullScreen) {
+        // 	this.closeFullscreen();
+        // 	this.fFullScreen = false;
+        // }
+    };
     JSSceneView.prototype.updatePosition = function (pos, elt) {
         if (this.fAbsolutePos) {
             _super.prototype.updatePosition.call(this, pos, elt);
@@ -1942,36 +1964,37 @@ var JSTextView = /** @class */ (function (_super) {
     function JSTextView(parent) {
         var _this = _super.call(this, parent) || this;
         _this.getElement().className = "inscore-txt";
+        _this.getElement().style.whiteSpace = "nowrap";
         return _this;
     }
-    JSTextView.prototype.clone = function (parent) { return new JSTextView(parent); };
+    JSTextView.prototype.clone = function (parent) {
+        var obj = new JSTextView(parent);
+        obj.getElement().innerHTML = this.getElement().innerHTML;
+        return obj;
+    };
     JSTextView.prototype.toString = function () { return "JSTextView"; };
-    JSTextView.prototype.getText = function (infos) {
-        return infos.text.replace(/\r?\n'/g, "<br />");
+    JSTextView.prototype.getText = function (text) {
+        return text.replace(/\r?\n/g, "<br />"); // transforms new lines in <br />
     };
     return JSTextView;
 }(JSHtmlView));
 ///<reference path="JSTextView.ts"/>
-///<reference path="TFileBased.ts"/>
+///<reference path="TFileLoader.ts"/>
+///<reference path="TASyncUpdate.ts"/>
 var JSTextfView = /** @class */ (function (_super) {
     __extends(JSTextfView, _super);
     function JSTextfView() {
-        var _this = _super !== null && _super.apply(this, arguments) || this;
-        _this.fContent = new TFileBased;
-        return _this;
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     JSTextfView.prototype.toString = function () { return "JSTextfView"; };
     JSTextfView.prototype.updateSpecial = function (obj, oid) {
         var _this = this;
-        var address = obj.getOSCAddress();
-        var pending = function () { _this.refresh(address); };
-        if (this.fContent.getData(obj.getFile(), this.getElement(), pending))
-            return _super.prototype.updateSpecial.call(this, obj, oid);
+        TFileLoader.load(this.getElement(), obj.getFile()).then(function (text) {
+            if (text) {
+                return TASyncUpdate.update(oid, function (obj) { _this.setHtml(obj, _this.getText(text)); return true; });
+            }
+        });
         return false;
-    };
-    JSTextfView.prototype.getText = function (infos) {
-        var text = this.fContent.get();
-        return text ? text.replace(/\r?\n'/g, "<br />") : "";
     };
     return JSTextfView;
 }(JSTextView));
@@ -1990,7 +2013,7 @@ var JSVideoView = /** @class */ (function (_super) {
     JSVideoView.prototype.clone = function (parent) { return new JSVideoView(parent); };
     JSVideoView.prototype.updateSpecial = function (obj, objid) {
         this.fVideo.src = obj.getFile();
-        return _super.prototype.updateSpecial.call(this, obj, objid);
+        return this.updateSizeASync(objid);
     };
     JSVideoView.prototype.setShadow = function (elt, val) {
         this.fVideo.style.filter = "drop-shadow(" + val.color + " " + val.xOffset + "px " + val.yOffset + "px " + val.blur + "px)";
@@ -2065,40 +2088,45 @@ var JSXMLView = /** @class */ (function (_super) {
     }
     JSXMLView.prototype.clone = function (parent) { return new JSXMLView(parent, this.fXMLLib, this.guido()); };
     JSXMLView.prototype.toString = function () { return "JSXMLView"; };
-    JSXMLView.prototype.getXml = function (xml) { return xml.code; };
+    JSXMLView.prototype.checkxml = function () {
+        if (this.fXMLLib)
+            return true;
+        console.log("libMusicXML is not available");
+        return false;
+    };
+    JSXMLView.prototype.xml2gmn = function (obj, content, page) {
+        var gmn = this.fXMLLib.string2guido(content, true);
+        return gmn.length ? this.gmn2svg(obj, gmn, page) : false;
+    };
     JSXMLView.prototype.updateSpecial = function (obj, oid) {
-        if (this.fXMLLib) {
+        if (this.checkxml()) {
             var xml = obj.getXMLInfos();
-            var content = this.fXMLLib.string2guido(this.getXml(xml), true);
-            return content.length ? this.gmn2svg(obj, content, xml.page) : false;
+            return this.xml2gmn(obj, xml.code, xml.page);
         }
-        else
-            console.log("libMusicXML is not available");
         return false;
     };
     return JSXMLView;
 }(JSGMNView));
 ///<reference path="JSXMLView.ts"/>
-///<reference path="TFileBased.ts"/>
+///<reference path="TFileLoader.ts"/>
+///<reference path="TASyncUpdate.ts"/>
 var JSXMLfView = /** @class */ (function (_super) {
     __extends(JSXMLfView, _super);
     function JSXMLfView() {
-        var _this = _super !== null && _super.apply(this, arguments) || this;
-        _this.fContent = new TFileBased;
-        return _this;
+        return _super !== null && _super.apply(this, arguments) || this;
     }
     JSXMLfView.prototype.toString = function () { return "JSXMLfView"; };
     JSXMLfView.prototype.updateSpecial = function (obj, oid) {
         var _this = this;
-        var address = obj.getOSCAddress();
-        var pending = function () { _this.refresh(address); };
-        if (this.fContent.getData(obj.getFile(), this.getElement(), pending))
-            return _super.prototype.updateSpecial.call(this, obj, oid);
+        if (!this.checkxml())
+            return false;
+        var xml = obj.getXMLInfos();
+        TFileLoader.load(this.getElement(), obj.getFile()).then(function (text) {
+            if (text) {
+                return TASyncUpdate.update(oid, function (obj) { return _this.xml2gmn(obj, text, xml.page); });
+            }
+        });
         return false;
-    };
-    JSXMLfView.prototype.getXml = function (unused) {
-        var xml = this.fContent.get();
-        return xml ? xml : "";
     };
     return JSXMLfView;
 }(JSXMLView));
@@ -2499,6 +2527,30 @@ var TConnections = /** @class */ (function () {
     };
     TConnections.fCnx = [];
     return TConnections;
+}());
+///<reference path="lib/libINScore.d.ts"/>
+var TJavascript = /** @class */ (function () {
+    function TJavascript() {
+    }
+    TJavascript.run = function (script) {
+        var out = window.eval(script);
+        if (out) {
+            if (typeof out === 'string') {
+                inscore.loadInscore(out);
+            }
+            else if (Array.isArray(out)) {
+                var outsum_1 = "";
+                out.forEach(function (value) { return outsum_1 += value; });
+                inscore.loadInscore(outsum_1);
+            }
+            else {
+                console.log("Unexpected value returned by " + script + ": " + out);
+                return 0;
+            }
+        }
+        return 1;
+    };
+    return TJavascript;
 }());
 ///<reference path="inscore.ts"/>
 ///<reference path="libraries.ts"/>

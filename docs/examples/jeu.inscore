@@ -27,9 +27,10 @@ url = "https://inscoreweb.grame.fr/imgs/jeu/";
 /ITL/scene/g2 set img $url + "Graphic4.png";
 /ITL/scene/g3 set img $url + "Graphic3.png";
 /ITL/scene/g4 set img $url + "Graphic2.png";
-/ITL/scene/g* scale 0.5;
+/ITL/scene/g* scale 0.23;
 
 /ITL/scene/g5 set img $url + "Graphic5.png";
+/ITL/scene/g5 scale 0.15;
 /ITL/scene/g* alpha 40;
 
 w = 1.8;

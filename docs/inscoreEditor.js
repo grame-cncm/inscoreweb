@@ -390,9 +390,9 @@ var INScoreBase = /** @class */ (function () {
             case kSvgType:
             case kHtmlType:
             case kTextType:
+            case kFaustType:
                 this.loadTextFile(file, type, dst);
                 break;
-            case kFaustType:
             case kVerovioType:
             case kImgType:
             case kVideoType:
@@ -11835,6 +11835,7 @@ function load(name, path) {
 })));
 // CodeMirror, copyright (c) by Marijn Haverbeke and others
 // Distributed under an MIT license: https://codemirror.net/LICENSE
+// adapted to inscore lang
 (function (mod) {
     if (typeof exports == "object" && typeof module == "object")
         mod(require("../node_modules/codemirror/lib/codemirror"));

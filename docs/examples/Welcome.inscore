@@ -35,5 +35,5 @@ More information on <br />
 /ITL/scene/comment y 0.28;
 
 /ITL/scene/logo set img $url + "imgs/grame.png";
-/ITL/scene/logo scale 0.55;
+/ITL/scene/logo scale 0.2;
 /ITL/scene/logo y 0.6;
