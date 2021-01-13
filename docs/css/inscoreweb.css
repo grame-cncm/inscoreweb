@@ -15,11 +15,17 @@ button { z-index: 1000;}
 #ilogs  { }
 #prefs  { margin: 10px; width: calc(100% - 10px); }
 #score  { }
-#preview  { visibility: hidden; opacity: 1; background: white; height: 100%; }
-#fullscore { 
-	width: calc(100% - 25px); 
-	height: calc(100%); 
+#closePreview  { 
+	position: absolute; 
+	left: 15px; 
+	top: 10px; 
+	z-index: 10000; 
+	border: none; 
+	font-size: 2em;
+	background: none; 
+	visibility: hidden;
 }
+
 #code 	{ resize: none; width: 100%; height: calc(100% - 47px); }
 #logs 	{ 
 	padding: 5px; 
@@ -51,11 +57,6 @@ button { z-index: 1000;}
     margin-right: auto 
 }
 
-/* @-moz-keyframes 	wait { from {scale: 40%;} to {scale: 60%;} }
-@-webkit-keyframes 	wait { from {scale: 40%;} to {scale: 60%;} }
-@-o-keyframes 		wait { from {scale: 40%;} to {scale: 60%;} }
-@keyframes 			wait { from {scale: 40%;} to {scale: 60%;} } */
-
 #loading {
 	display: block;
 	margin: auto;
@@ -64,28 +65,8 @@ button { z-index: 1000;}
 	bottom: 0;
 	left: 0;
 	right: 0;
-	/* scale: 50%; */
 	z-index: 100;
-	/* -webkit-animation: wait 2s ease infinite alternate;
-	-moz-animation: wait 2s ease infinite alternate;
-	 -ms-animation: wait 2s ease infinite alternate;
-	  -o-animation: wait 2s ease infinite alternate;
-		 animation: wait 2s ease infinite alternate; */
-
-	/* animation-name: wait;
-	animation-duration: 2s;
-	animation-direction: alternate;
-	animation-iteration-count: infinite;
-	animation-timing-function: ease; */
-	/* z-index: 1; */
 }
-
-/* #loading {
-	position: absolute;
-	top: calc(50% - 180px);
-	left: calc(50% - 200px);
-	scale: 50%;
-} */
 
  .toolbar-left 	{ 
 	text-align: left;
@@ -125,24 +106,25 @@ button { z-index: 1000;}
 .tab-content    { height: calc(100% - 50px); }
 .tab-pane		{ width: 100%; height: 100%; overflow-y: auto; }
 .grid-container {
-  display: grid;
-  grid-template-columns: 50% 50%;
-  grid-template-rows: 50px calc(100% - 50px) auto;
-  grid-template-areas:
-    'header header'
-    'left right'
-    'footer footer';
-  align-content: start;
-  grid-gap: 10px;
-  padding: 5px;
-  height: calc(100% - 50px);
-}
-
+	display: grid;
+	grid-template-columns: 50% 50%;
+	grid-template-rows: 50px calc(100% - 50px) auto;
+	grid-template-areas:
+	  'header header'
+	  'left right'
+	  'footer footer';
+	align-content: start;
+	grid-gap: 10px;
+	padding: 5px;
+	height: calc(100% - 50px);
+  }
+	
 .grid-container > div {
   background-color: rgba(255, 255, 255, 1);
   padding: 0 0;
   font-size: 14px;
 }
+
 
 @media only screen and (max-width: 768px) {
 	html, body {
@@ -169,10 +151,9 @@ button { z-index: 1000;}
 	  padding: 5px;
 	}
 
-	#loading {
+	/* #loading {
 		scale: 25%;
-	}
-	
+	} */	
 }
 
 .dropdown-submenu {

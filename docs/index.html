@@ -22,17 +22,11 @@
 <body>
 
 
-<!-- <div id=loading> -->
-	<img src="imgs/inscore.png" alt="INScore" id="loading">
-<!-- </div>	 -->
-
-<div class="modal fade" id="preview">
-	<button id="fsclose" style="float: right; z-index: 1000;" type="button" class="close" data-dismiss="modal">&times;</button>
-	<div id="fullscore"></div>
-</div>
+<img src="imgs/inscore.png" alt="INScore" id="loading">
+<button id="closePreview" type="button">&times;</button>
 
 <div class="grid-container" id="container">
-  <div class="header">
+  <div class="header" id="header">
 
 	<nav class="navbar navbar-inverse">
 	  <div class="container-fluid">
@@ -73,7 +67,7 @@
 	</nav>
   </div>
 
-  <div class="left well">
+  <div class="left well" id="left">
 	  <ul class="nav nav-tabs">
 		<li class="active"><a data-toggle="tab" href="#editor" id="editornav">Editor</a></li>
 		<li><a data-toggle="tab" href="#ilogs" id="lognav">INScore logs</a></li>
@@ -247,7 +241,7 @@
   </div>
 
 
-  <div class="footer">
+  <div class="footer", id="footer">
 	  <a href="https://inscore.grame.fr" target=_blank>INScore Project</a> - Copyright 2020 &copy; 
 	  <a href="https://www.grame.fr" target=_blank>Grame-CNCM</a>
   </div>

@@ -6,15 +6,52 @@ interface KeyHandler { (event: KeyboardEvent) : void }
 interface UrlOption  { option: string; value: string; }
 
 //----------------------------------------------------------------------------
+// scene state management, used with preview mode
+//----------------------------------------------------------------------------
+class SceneState {
+	position: string;
+	left 	: string;
+	top 	: string;
+	width	: string;
+	height	: string;
+	zIndex	: string;
+	background: string;
+
+	constructor (scene : HTMLElement) {
+		this.position 	= scene.style.position;
+		this.left		= scene.style.left;
+		this.top		= scene.style.top;
+		this.width		= scene.style.width;
+		this.height	= scene.style.height;
+		this.zIndex	= scene.style.zIndex;
+		this.background= scene.style.background;
+	}
+
+	restore (scene : HTMLElement) {
+		scene.style.position= this.position;
+		scene.style.left 	= this.left;
+		scene.style.top 	= this.top;
+		scene.style.width 	= this.width
+		scene.style.height 	= this.height
+		scene.style.zIndex 	= this.zIndex
+		scene.style.background = this.background;
+	}
+
+	toString() : string	 { return "position: " + this.position + " left: " + this.left + " top: " + this.top + " width: " + this.width +" height: " + this.height + " zIndex: " + this.zIndex + " background: " + this.background; }
+}
+
+//----------------------------------------------------------------------------
 // a simple glue to inscore engine
 //----------------------------------------------------------------------------
 class EditorGlue extends INScoreBase {
 
 	fKeyHandler : KeyHandler;
+	fSceneState : SceneState;
 
 	constructor() {
 		super();
-		$("#fullscreen").click		( (event) => { this.loadPreview() }); 
+		$("#fullscreen").on ("click", (event) => { this.enterPreview() }); 
+		$("#closePreview").on ("click", (event) => { this.closePreview() }); 
 		this.fKeyHandler = this.closePreview;
     }
 
@@ -53,7 +90,7 @@ class EditorGlue extends INScoreBase {
 		if (preview)
 			$("#fullscreen").trigger("click");
 		return retcode;
-}
+	}
 
 	//------------------------------------------------------------------------
 	// scan the current location to detect parameters
@@ -91,22 +128,31 @@ class EditorGlue extends INScoreBase {
 		}
 	}
 
-	closePreview(event: KeyboardEvent) {
-		if (event.key == 'Escape') {
-			$("#fsclose").click();
-			window.removeEventListener("keydown", this.fKeyHandler, {capture: true});
-		}
+	private closePreviewKey(event: KeyboardEvent) {
+		if (event.key == 'Escape') this.closePreview();
 	}
-	
-	loadPreview() {
-		let div = document.getElementById("fullscore");
-		this.initDiv (div, false);
-		let address = this.getSceneAddress (div);
-		let score = address + " new;\n";
-		score += editor.value.replace (/\/ITL\/scene/g, address);
-		let preview = document.getElementById("preview");
-		preview.style.visibility = "visible";
-		this.loadScript (div, score);
+
+	private closePreview() {
+		let scene = document.getElementById("scene");
+		if (this.fSceneState) this.fSceneState.restore (scene);
+		document.getElementById("closePreview").style.visibility = "hidden";
+		inscore.postMessageStr ("/ITL/scene", "refresh");
+		window.removeEventListener("keydown", this.fKeyHandler, {capture: true});
+	}
+		
+	private enterPreview() {
+		let scene = document.getElementById("scene");
+		this.fSceneState = new SceneState (scene);
+		scene.style.position = "absolute";
+		scene.style.left = "0px";
+		scene.style.top = "0px";
+		scene.style.width = "100%";
+		scene.style.height = "100%";
+		scene.style.zIndex = "10";
+		if (!scene.style.background) scene.style.background = "white";
+		document.getElementById("closePreview").style.visibility = "visible";
+		inscore.postMessageStr ("/ITL/scene", "refresh");
+		this.fKeyHandler = (event: KeyboardEvent) => { this.closePreviewKey (event) } ;
 		window.addEventListener ("keydown", this.fKeyHandler, {capture: true});
 	}
 	
