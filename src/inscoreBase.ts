@@ -245,14 +245,14 @@ class INScoreBase {
 		event.preventDefault();
 	}
 
-
     //------------------------------------------------------------------------
-    // activate drag & drop on inscore divs
+	private resize (event: UIEvent) : void {
+		for (let i=0; i< this.fDivs.length; i++) {
+			inscore.postMessageStr (this.getSceneAddress(this.fDivs[i].fDiv), "refresh");
+		}
+	}
+
 	private watchResize () : void {
-		window.addEventListener ("resize", (e: UIEvent) : void => { 
-			for (let i=0; i< this.fDivs.length; i++) {
-				inscore.postMessageStr (this.getSceneAddress(this.fDivs[i].fDiv), "refresh");
-			}
-		});
+		window.addEventListener ("resize", (event: UIEvent) => { this.resize(event)} );
     }
 }
