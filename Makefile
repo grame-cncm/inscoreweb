@@ -1,5 +1,7 @@
 
 MAKE ?= make
+ILIB ?= ../git/javascript
+
 
 CM := lib/codemirror.css theme/abcdef.css theme/ambiance.css theme/bespin.css theme/blackboard.css theme/cobalt.css theme/colorforth.css theme/dracula.css theme/duotone-dark.css theme/duotone-light.css theme/eclipse.css theme/elegant.css theme/erlang-dark.css theme/hopscotch.css theme/icecoder.css theme/isotope.css theme/lesser-dark.css theme/liquibyte.css theme/material.css theme/mbo.css theme/mdn-like.css theme/midnight.css theme/monokai.css theme/neat.css theme/neo.css theme/night.css theme/panda-syntax.css theme/paraiso-dark.css theme/paraiso-light.css theme/pastel-on-dark.css theme/railscasts.css theme/rubyblue.css theme/seti.css theme/solarized.css theme/the-matrix.css theme/tomorrow-night-bright.css theme/tomorrow-night-eighties.css theme/ttcn.css theme/twilight.css theme/vibrant-ink.css theme/xq-dark.css theme/xq-light.css theme/yeti.css theme/zenburn.css
 
@@ -24,6 +26,7 @@ INSCOREJS ?= ../git/javascript
 .PHONY: examples
 
 all:
+	$(MAKE) update
 	$(MAKE) examples
 	$(MAKE) ts
 	$(MAKE) libs
@@ -31,6 +34,18 @@ all:
 	$(MAKE) css
 	$(MAKE) readme
 	git checkout $(DIST)/CNAME
+
+
+update: $(LIBDIR)/inscoreview.js $(LIBDIR)/libINScore.js $(LIBDIR)/libINScore.wasm 
+
+$(LIBDIR)/inscoreview.js: $(ILIB)/inscoreview.js
+	cp $< $@
+
+$(LIBDIR)/libINScore.js: $(ILIB)/lib/libINScore.js
+	cp $< $@
+
+$(LIBDIR)/libINScore.wasm: $(ILIB)/lib/libINScore.wasm
+	cp $< $@
 
 test : 
 	@echo $(TSFILES)
