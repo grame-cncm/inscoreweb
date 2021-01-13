@@ -57,20 +57,19 @@ class InscoreEditor {
 		$("#etheme").change 		( (event) => { this.fEditor.setOption("theme", <string>$("#etheme").val()); } );
 		$("#wraplines").change 		( (event) => { this.fEditor.setOption("lineWrapping",  <boolean>$("#wraplines").is(":checked")); } );
 		$("#run").on ("click",		(event) => { this.setInscore(this.fEditor.getValue()); } );
-		$("#reset").click			( (event) => { inscore.postMessageStr("/ITL/scene", "reset"); } );
-		$("#clear-log").click		( (event) => { $("#logs").text (""); } );
-		$("#saveinscore").click		( (event) => { this.saveInscore(); });
-		$("#savehtml").click		( (event) => { this.saveHtml(); });
+		$("#reset").on ("click",	(event) => { inscore.postMessageStr("/ITL/scene", "reset"); } );
+		$("#clear-log").on ("click", (event) => { $("#logs").text (""); } );
+		$("#saveinscore").on ("click", (event) => { this.saveInscore(); });
+		$("#savehtml").on ("click",	 (event) => { this.saveHtml(); });
 		 
 		this.fEditor.getWrapperElement().style.fontFamily =  this.fontMenu2fontFamily(<string>$("#font-family").val());
 		this.fEditor.getWrapperElement().style.fontSize   =  $("#font-size").val() + "px"; 
 		this.fEditor.setOption("theme", <string>$("#etheme").val());
 		this.fEditor.setOption("lineWrapping",  <boolean>$("#wraplines").is(":checked"));
-		// this.setInscore (this.fEditor.getValue(), this.fFileName);
 
 		let logs = document.getElementById ("logs");
-		$("#log-font").click		( () => { logs.style.fontFamily = this.fontMenu2fontFamily(<string>$("#log-font").val()); });
-		$("#log-size").click		( () => { logs.style.fontSize = $("#log-size").val() + "px"; });
+		$("#log-font").on ("click",	() => { logs.style.fontFamily = this.fontMenu2fontFamily(<string>$("#log-font").val()); });
+		$("#log-size").on ("click", () => { logs.style.fontSize = $("#log-size").val() + "px"; });
 		logs.style.fontFamily = <string>$("#log-font").val();
 		logs.style.fontSize = $("#log-size").val() + "px";
 	}
