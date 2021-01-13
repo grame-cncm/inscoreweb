@@ -2,7 +2,7 @@
 /* @media only print { */
 	.header 	{ display: none; }
 	.left 		{ display: none; }
-	.inscore 		{ display: block; border: 1px}
+	.inscore 	{ display: block; border: 1px}
 	.footer 	{ display: none; }
 
 	.noprint	{ display: none;  }

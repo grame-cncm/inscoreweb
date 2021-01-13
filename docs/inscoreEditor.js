@@ -152,18 +152,17 @@ var InscoreEditor = /** @class */ (function () {
         $("#etheme").change(function (event) { _this.fEditor.setOption("theme", $("#etheme").val()); });
         $("#wraplines").change(function (event) { _this.fEditor.setOption("lineWrapping", $("#wraplines").is(":checked")); });
         $("#run").on("click", function (event) { _this.setInscore(_this.fEditor.getValue()); });
-        $("#reset").click(function (event) { inscore.postMessageStr("/ITL/scene", "reset"); });
-        $("#clear-log").click(function (event) { $("#logs").text(""); });
-        $("#saveinscore").click(function (event) { _this.saveInscore(); });
-        $("#savehtml").click(function (event) { _this.saveHtml(); });
+        $("#reset").on("click", function (event) { inscore.postMessageStr("/ITL/scene", "reset"); });
+        $("#clear-log").on("click", function (event) { $("#logs").text(""); });
+        $("#saveinscore").on("click", function (event) { _this.saveInscore(); });
+        $("#savehtml").on("click", function (event) { _this.saveHtml(); });
         this.fEditor.getWrapperElement().style.fontFamily = this.fontMenu2fontFamily($("#font-family").val());
         this.fEditor.getWrapperElement().style.fontSize = $("#font-size").val() + "px";
         this.fEditor.setOption("theme", $("#etheme").val());
         this.fEditor.setOption("lineWrapping", $("#wraplines").is(":checked"));
-        // this.setInscore (this.fEditor.getValue(), this.fFileName);
         var logs = document.getElementById("logs");
-        $("#log-font").click(function () { logs.style.fontFamily = _this.fontMenu2fontFamily($("#log-font").val()); });
-        $("#log-size").click(function () { logs.style.fontSize = $("#log-size").val() + "px"; });
+        $("#log-font").on("click", function () { logs.style.fontFamily = _this.fontMenu2fontFamily($("#log-font").val()); });
+        $("#log-size").on("click", function () { logs.style.fontSize = $("#log-size").val() + "px"; });
         logs.style.fontFamily = $("#log-font").val();
         logs.style.fontSize = $("#log-size").val() + "px";
     };
@@ -454,19 +453,44 @@ var INScoreBase = /** @class */ (function () {
         event.preventDefault();
     };
     //------------------------------------------------------------------------
-    // activate drag & drop on inscore divs
+    INScoreBase.prototype.resize = function (event) {
+        for (var i = 0; i < this.fDivs.length; i++) {
+            inscore.postMessageStr(this.getSceneAddress(this.fDivs[i].fDiv), "refresh");
+        }
+    };
     INScoreBase.prototype.watchResize = function () {
         var _this = this;
-        window.addEventListener("resize", function (e) {
-            for (var i = 0; i < _this.fDivs.length; i++) {
-                inscore.postMessageStr(_this.getSceneAddress(_this.fDivs[i].fDiv), "refresh");
-            }
-        });
+        window.addEventListener("resize", function (event) { _this.resize(event); });
     };
     return INScoreBase;
 }());
 ///<reference path="inscoreBase.ts"/>
 ///<reference path="editor.ts"/>
+//----------------------------------------------------------------------------
+// scene state management, used with preview mode
+//----------------------------------------------------------------------------
+var SceneState = /** @class */ (function () {
+    function SceneState(scene) {
+        this.position = scene.style.position;
+        this.left = scene.style.left;
+        this.top = scene.style.top;
+        this.width = scene.style.width;
+        this.height = scene.style.height;
+        this.zIndex = scene.style.zIndex;
+        this.background = scene.style.background;
+    }
+    SceneState.prototype.restore = function (scene) {
+        scene.style.position = this.position;
+        scene.style.left = this.left;
+        scene.style.top = this.top;
+        scene.style.width = this.width;
+        scene.style.height = this.height;
+        scene.style.zIndex = this.zIndex;
+        scene.style.background = this.background;
+    };
+    SceneState.prototype.toString = function () { return "position: " + this.position + " left: " + this.left + " top: " + this.top + " width: " + this.width + " height: " + this.height + " zIndex: " + this.zIndex + " background: " + this.background; };
+    return SceneState;
+}());
 //----------------------------------------------------------------------------
 // a simple glue to inscore engine
 //----------------------------------------------------------------------------
@@ -474,7 +498,8 @@ var EditorGlue = /** @class */ (function (_super) {
     __extends(EditorGlue, _super);
     function EditorGlue() {
         var _this = _super.call(this) || this;
-        $("#fullscreen").click(function (event) { _this.loadPreview(); });
+        $("#fullscreen").on("click", function (event) { _this.enterPreview(); });
+        $("#closePreview").on("click", function (event) { _this.closePreview(); });
         _this.fKeyHandler = _this.closePreview;
         return _this;
     }
@@ -555,21 +580,33 @@ var EditorGlue = /** @class */ (function (_super) {
             this.addInscoreDiv(div, 1);
         }
     };
-    EditorGlue.prototype.closePreview = function (event) {
-        if (event.key == 'Escape') {
-            $("#fsclose").click();
-            window.removeEventListener("keydown", this.fKeyHandler, { capture: true });
-        }
+    EditorGlue.prototype.closePreviewKey = function (event) {
+        if (event.key == 'Escape')
+            this.closePreview();
     };
-    EditorGlue.prototype.loadPreview = function () {
-        var div = document.getElementById("fullscore");
-        this.initDiv(div, false);
-        var address = this.getSceneAddress(div);
-        var score = address + " new;\n";
-        score += editor.value.replace(/\/ITL\/scene/g, address);
-        var preview = document.getElementById("preview");
-        preview.style.visibility = "visible";
-        this.loadScript(div, score);
+    EditorGlue.prototype.closePreview = function () {
+        var scene = document.getElementById("scene");
+        if (this.fSceneState)
+            this.fSceneState.restore(scene);
+        document.getElementById("closePreview").style.visibility = "hidden";
+        inscore.postMessageStr("/ITL/scene", "refresh");
+        window.removeEventListener("keydown", this.fKeyHandler, { capture: true });
+    };
+    EditorGlue.prototype.enterPreview = function () {
+        var _this = this;
+        var scene = document.getElementById("scene");
+        this.fSceneState = new SceneState(scene);
+        scene.style.position = "absolute";
+        scene.style.left = "0px";
+        scene.style.top = "0px";
+        scene.style.width = "100%";
+        scene.style.height = "100%";
+        scene.style.zIndex = "10";
+        if (!scene.style.background)
+            scene.style.background = "white";
+        document.getElementById("closePreview").style.visibility = "visible";
+        inscore.postMessageStr("/ITL/scene", "refresh");
+        this.fKeyHandler = function (event) { _this.closePreviewKey(event); };
         window.addEventListener("keydown", this.fKeyHandler, { capture: true });
     };
     EditorGlue.prototype.loadFromFile = function (content, v2, name) {
@@ -859,7 +896,7 @@ function load(name, path) {
         return -1;
     }
     // Number of pixels added to scroller and sizer to hide scrollbar
-    var scrollerGap = 30;
+    var scrollerGap = 50;
     // Returned or thrown by various protocols to signal 'I'm not
     // handling this'.
     var Pass = { toString: function () { return "CodeMirror.Pass"; } };
@@ -2041,7 +2078,7 @@ function load(name, path) {
                 if (output[prop] == null) {
                     output[prop] = lineClass[2];
                 }
-                else if (!(new RegExp("(?:^|\s)" + lineClass[2] + "(?:$|\s)")).test(output[prop])) {
+                else if (!(new RegExp("(?:^|\\s)" + lineClass[2] + "(?:$|\\s)")).test(output[prop])) {
                     output[prop] += " " + lineClass[2];
                 }
             }
@@ -2787,7 +2824,7 @@ function load(name, path) {
             }
         }
         builder.trailingSpace = displayText.charCodeAt(text.length - 1) == 32;
-        if (style || startStyle || endStyle || mustWrap || css) {
+        if (style || startStyle || endStyle || mustWrap || css || attributes) {
             var fullStyle = style || "";
             if (startStyle) {
                 fullStyle += startStyle;
@@ -4089,7 +4126,7 @@ function load(name, path) {
             x = e.clientX - space.left;
             y = e.clientY - space.top;
         }
-        catch (e) {
+        catch (e$1) {
             return null;
         }
         var coords = coordsChar(cm, x, y), line;
@@ -4450,16 +4487,23 @@ function load(name, path) {
         var on = true;
         display.cursorDiv.style.visibility = "";
         if (cm.options.cursorBlinkRate > 0) {
-            display.blinker = setInterval(function () { return display.cursorDiv.style.visibility = (on = !on) ? "" : "hidden"; }, cm.options.cursorBlinkRate);
+            display.blinker = setInterval(function () {
+                if (!cm.hasFocus()) {
+                    onBlur(cm);
+                }
+                display.cursorDiv.style.visibility = (on = !on) ? "" : "hidden";
+            }, cm.options.cursorBlinkRate);
         }
         else if (cm.options.cursorBlinkRate < 0) {
             display.cursorDiv.style.visibility = "hidden";
         }
     }
     function ensureFocus(cm) {
-        if (!cm.state.focused) {
+        if (!cm.hasFocus()) {
             cm.display.input.focus();
-            onFocus(cm);
+            if (!cm.state.focused) {
+                onFocus(cm);
+            }
         }
     }
     function delayBlurEvent(cm) {
@@ -4467,12 +4511,14 @@ function load(name, path) {
         setTimeout(function () {
             if (cm.state.delayingBlurEvent) {
                 cm.state.delayingBlurEvent = false;
-                onBlur(cm);
+                if (cm.state.focused) {
+                    onBlur(cm);
+                }
             }
         }, 100);
     }
     function onFocus(cm, e) {
-        if (cm.state.delayingBlurEvent) {
+        if (cm.state.delayingBlurEvent && !cm.state.draggingText) {
             cm.state.delayingBlurEvent = false;
         }
         if (cm.options.readOnly == "nocursor") {
@@ -4688,8 +4734,9 @@ function load(name, path) {
                 result.scrollTop = newTop;
             }
         }
-        var screenleft = cm.curOp && cm.curOp.scrollLeft != null ? cm.curOp.scrollLeft : display.scroller.scrollLeft;
-        var screenw = displayWidth(cm) - (cm.options.fixedGutter ? display.gutters.offsetWidth : 0);
+        var gutterSpace = cm.options.fixedGutter ? 0 : display.gutters.offsetWidth;
+        var screenleft = cm.curOp && cm.curOp.scrollLeft != null ? cm.curOp.scrollLeft : display.scroller.scrollLeft - gutterSpace;
+        var screenw = displayWidth(cm) - display.gutters.offsetWidth;
         var tooWide = rect.right - rect.left > screenw;
         if (tooWide) {
             rect.right = rect.left + screenw;
@@ -4698,7 +4745,7 @@ function load(name, path) {
             result.scrollLeft = 0;
         }
         else if (rect.left < screenleft) {
-            result.scrollLeft = Math.max(0, rect.left - (tooWide ? 0 : 10));
+            result.scrollLeft = Math.max(0, rect.left + gutterSpace - (tooWide ? 0 : 10));
         }
         else if (rect.right > screenw + screenleft - 3) {
             result.scrollLeft = rect.right + (tooWide ? 0 : 10) - screenw;
@@ -5356,7 +5403,8 @@ function load(name, path) {
             return;
         }
         snapshot.activeElt.focus();
-        if (snapshot.anchorNode && contains(document.body, snapshot.anchorNode) && contains(document.body, snapshot.focusNode)) {
+        if (!/^(INPUT|TEXTAREA)$/.test(snapshot.activeElt.nodeName) &&
+            snapshot.anchorNode && contains(document.body, snapshot.anchorNode) && contains(document.body, snapshot.focusNode)) {
             var sel = window.getSelection(), range = document.createRange();
             range.setEnd(snapshot.anchorNode, snapshot.anchorOffset);
             range.collapse(false);
@@ -7231,7 +7279,7 @@ function load(name, path) {
                 widgets.push(widget);
             }
             else {
-                widgets.splice(Math.min(widgets.length - 1, Math.max(0, widget.insertAt)), 0, widget);
+                widgets.splice(Math.min(widgets.length, Math.max(0, widget.insertAt)), 0, widget);
             }
             widget.line = line;
             if (cm && !lineIsHidden(doc, line)) {
@@ -8155,7 +8203,7 @@ function load(name, path) {
                     cm.display.input.focus();
                 }
             }
-            catch (e) { }
+            catch (e$1) { }
         }
     }
     function onDragStart(cm, e) {
@@ -8263,7 +8311,7 @@ function load(name, path) {
         46: "Delete", 59: ";", 61: "=", 91: "Mod", 92: "Mod", 93: "Mod",
         106: "*", 107: "=", 109: "-", 110: ".", 111: "/", 145: "ScrollLock",
         173: "-", 186: ";", 187: "=", 188: ",", 189: "-", 190: ".", 191: "/", 192: "`", 219: "[", 220: "\\",
-        221: "]", 222: "'", 63232: "Up", 63233: "Down", 63234: "Left", 63235: "Right", 63272: "Delete",
+        221: "]", 222: "'", 224: "Mod", 63232: "Up", 63233: "Down", 63234: "Left", 63235: "Right", 63272: "Delete",
         63273: "Home", 63275: "End", 63276: "PageUp", 63277: "PageDown", 63302: "Insert"
     };
     // Number keys
@@ -8438,7 +8486,7 @@ function load(name, path) {
         if ((flipCtrlCmd ? event.metaKey : event.ctrlKey) && base != "Ctrl") {
             name = "Ctrl-" + name;
         }
-        if ((flipCtrlCmd ? event.ctrlKey : event.metaKey) && base != "Cmd") {
+        if ((flipCtrlCmd ? event.ctrlKey : event.metaKey) && base != "Mod") {
             name = "Cmd-" + name;
         }
         if (!noShift && event.shiftKey && base != "Shift") {
@@ -8706,7 +8754,7 @@ function load(name, path) {
         goGroupRight: function (cm) { return cm.moveH(1, "group"); },
         goGroupLeft: function (cm) { return cm.moveH(-1, "group"); },
         goWordRight: function (cm) { return cm.moveH(1, "word"); },
-        delCharBefore: function (cm) { return cm.deleteH(-1, "char"); },
+        delCharBefore: function (cm) { return cm.deleteH(-1, "codepoint"); },
         delCharAfter: function (cm) { return cm.deleteH(1, "char"); },
         delWordBefore: function (cm) { return cm.deleteH(-1, "word"); },
         delWordAfter: function (cm) { return cm.deleteH(1, "word"); },
@@ -8918,6 +8966,9 @@ function load(name, path) {
     var lastStoppedKey = null;
     function onKeyDown(e) {
         var cm = this;
+        if (e.target && e.target != cm.display.input.getField()) {
+            return;
+        }
         cm.curOp.focus = activeElt();
         if (signalDOMEvent(cm, e)) {
             return;
@@ -8965,6 +9016,9 @@ function load(name, path) {
     }
     function onKeyPress(e) {
         var cm = this;
+        if (e.target && e.target != cm.display.input.getField()) {
+            return;
+        }
         if (eventInWidget(cm.display, e) || signalDOMEvent(cm, e) || e.ctrlKey && !e.altKey || mac && e.metaKey) {
             return;
         }
@@ -9146,6 +9200,14 @@ function load(name, path) {
                 display.scroller.draggable = false;
             }
             cm.state.draggingText = false;
+            if (cm.state.delayingBlurEvent) {
+                if (cm.hasFocus()) {
+                    cm.state.delayingBlurEvent = false;
+                }
+                else {
+                    delayBlurEvent(cm);
+                }
+            }
             off(display.wrapper.ownerDocument, "mouseup", dragEnd);
             off(display.wrapper.ownerDocument, "mousemove", mouseMove);
             off(display.scroller, "dragstart", dragStart);
@@ -9156,8 +9218,8 @@ function load(name, path) {
                     extendSelection(cm.doc, pos, null, null, behavior.extend);
                 }
                 // Work around unexplainable focus problem in IE9 (#2127) and Chrome (#3081)
-                if (webkit || ie && ie_version == 9) {
-                    setTimeout(function () { display.wrapper.ownerDocument.body.focus(); display.input.focus(); }, 20);
+                if ((webkit && !safari) || ie && ie_version == 9) {
+                    setTimeout(function () { display.wrapper.ownerDocument.body.focus({ preventScroll: true }); display.input.focus(); }, 20);
                 }
                 else {
                     display.input.focus();
@@ -9174,16 +9236,16 @@ function load(name, path) {
         }
         cm.state.draggingText = dragEnd;
         dragEnd.copy = !behavior.moveOnDrag;
-        // IE's approach to draggable
-        if (display.scroller.dragDrop) {
-            display.scroller.dragDrop();
-        }
         on(display.wrapper.ownerDocument, "mouseup", dragEnd);
         on(display.wrapper.ownerDocument, "mousemove", mouseMove);
         on(display.scroller, "dragstart", dragStart);
         on(display.scroller, "drop", dragEnd);
-        delayBlurEvent(cm);
+        cm.state.delayingBlurEvent = true;
         setTimeout(function () { return display.input.focus(); }, 20);
+        // IE's approach to draggable
+        if (display.scroller.dragDrop) {
+            display.scroller.dragDrop();
+        }
     }
     function rangeForUnit(cm, pos, unit) {
         if (unit == "char") {
@@ -9200,6 +9262,9 @@ function load(name, path) {
     }
     // Normal selection, as opposed to text dragging.
     function leftButtonSelect(cm, event, start, behavior) {
+        if (ie) {
+            delayBlurEvent(cm);
+        }
         var display = cm.display, doc = cm.doc;
         e_preventDefault(event);
         var ourRange, ourIndex, startSel = doc.sel, ranges = startSel.ranges;
@@ -9408,7 +9473,7 @@ function load(name, path) {
                 mX = e.clientX;
                 mY = e.clientY;
             }
-            catch (e) {
+            catch (e$1) {
                 return false;
             }
         }
@@ -9516,7 +9581,7 @@ function load(name, path) {
                 replaceRange(cm.doc, val, newBreaks[i], Pos(newBreaks[i].line, newBreaks[i].ch + val.length));
             }
         });
-        option("specialChars", /[\u0000-\u001f\u007f-\u009f\u00ad\u061c\u200b-\u200f\u2028\u2029\ufeff\ufff9-\ufffc]/g, function (cm, val, old) {
+        option("specialChars", /[\u0000-\u001f\u007f-\u009f\u00ad\u061c\u200b-\u200c\u200e\u200f\u2028\u2029\ufeff\ufff9-\ufffc]/g, function (cm, val, old) {
             cm.state.specialChars = new RegExp(val.source + (val.test("\t") ? "" : "|\t"), "g");
             if (old != Init) {
                 cm.refresh();
@@ -9696,7 +9761,11 @@ function load(name, path) {
         this.curOp.forceUpdate = true;
         attachDoc(this, doc);
         if ((options.autofocus && !mobile) || this.hasFocus()) {
-            setTimeout(bind(onFocus, this), 20);
+            setTimeout(function () {
+                if (this$1.hasFocus() && !this$1.state.focused) {
+                    onFocus(this$1);
+                }
+            }, 20);
         }
         else {
             onBlur(this);
@@ -9987,7 +10056,7 @@ function load(name, path) {
                  {
                     to = Pos(to.line, Math.min(getLine(doc, to.line).text.length, to.ch + lst(textLines).length));
                 }
-                else if (paste && lastCopied && lastCopied.lineWise && lastCopied.text.join("\n") == inserted) {
+                else if (paste && lastCopied && lastCopied.lineWise && lastCopied.text.join("\n") == textLines.join("\n")) {
                     from = to = Pos(from.line, 0);
                 }
             }
@@ -10596,14 +10665,14 @@ function load(name, path) {
         };
     }
     // Used for horizontal relative motion. Dir is -1 or 1 (left or
-    // right), unit can be "char", "column" (like char, but doesn't
-    // cross line boundaries), "word" (across next word), or "group" (to
-    // the start of next group of word or non-word-non-whitespace
-    // chars). The visually param controls whether, in right-to-left
-    // text, direction 1 means to move towards the next index in the
-    // string, or towards the character to the right of the current
-    // position. The resulting position will have a hitSide=true
-    // property if it reached the end of the document.
+    // right), unit can be "codepoint", "char", "column" (like char, but
+    // doesn't cross line boundaries), "word" (across next word), or
+    // "group" (to the start of next group of word or
+    // non-word-non-whitespace chars). The visually param controls
+    // whether, in right-to-left text, direction 1 means to move towards
+    // the next index in the string, or towards the character to the right
+    // of the current position. The resulting position will have a
+    // hitSide=true property if it reached the end of the document.
     function findPosH(doc, pos, dir, unit, visually) {
         var oldPos = pos;
         var origDir = dir;
@@ -10619,7 +10688,16 @@ function load(name, path) {
         }
         function moveOnce(boundToLine) {
             var next;
-            if (visually) {
+            if (unit == "codepoint") {
+                var ch = lineObj.text.charCodeAt(pos.ch + (unit > 0 ? 0 : -1));
+                if (isNaN(ch)) {
+                    next = null;
+                }
+                else {
+                    next = new Pos(pos.line, Math.max(0, Math.min(lineObj.text.length, pos.ch + dir * (ch >= 0xD800 && ch < 0xDC00 ? 2 : 1))), -dir);
+                }
+            }
+            else if (visually) {
                 next = moveVisually(doc.cm, lineObj, pos, dir);
             }
             else {
@@ -10638,7 +10716,7 @@ function load(name, path) {
             }
             return true;
         }
-        if (unit == "char") {
+        if (unit == "char" || unit == "codepoint") {
             moveOnce();
         }
         else if (unit == "column") {
@@ -10722,8 +10800,19 @@ function load(name, path) {
         var input = this, cm = input.cm;
         var div = input.div = display.lineDiv;
         disableBrowserMagic(div, cm.options.spellcheck, cm.options.autocorrect, cm.options.autocapitalize);
+        function belongsToInput(e) {
+            for (var t = e.target; t; t = t.parentNode) {
+                if (t == div) {
+                    return true;
+                }
+                if (/\bCodeMirror-(?:line)?widget\b/.test(t.className)) {
+                    break;
+                }
+            }
+            return false;
+        }
         on(div, "paste", function (e) {
-            if (signalDOMEvent(cm, e) || handlePaste(e, cm)) {
+            if (!belongsToInput(e) || signalDOMEvent(cm, e) || handlePaste(e, cm)) {
                 return;
             }
             // IE doesn't fire input events, so we schedule a read for the pasted content in this way
@@ -10754,7 +10843,7 @@ function load(name, path) {
             }
         });
         function onCopyCut(e) {
-            if (signalDOMEvent(cm, e)) {
+            if (!belongsToInput(e) || signalDOMEvent(cm, e)) {
                 return;
             }
             if (cm.somethingSelected()) {
@@ -11693,6 +11782,7 @@ function load(name, path) {
             this.reset();
         }
         this.textarea.disabled = val == "nocursor";
+        this.textarea.readOnly = !!val;
     };
     TextareaInput.prototype.setUneditable = function () { };
     TextareaInput.prototype.needsContentAttribute = false;
@@ -11830,7 +11920,7 @@ function load(name, path) {
     };
     CodeMirror.fromTextArea = fromTextArea;
     addLegacyProps(CodeMirror);
-    CodeMirror.version = "5.53.2";
+    CodeMirror.version = "5.58.3";
     return CodeMirror;
 })));
 // CodeMirror, copyright (c) by Marijn Haverbeke and others

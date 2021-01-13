@@ -1882,7 +1882,6 @@ var JSSceneView = /** @class */ (function (_super) {
         // for a yet unknown reason, removing the next line result in incorrect
         // children positionning (like if position becomes relative to the window)
         div.style.filter = "blur(0px)";
-        _this.fFullScreen = false;
         return _this;
     }
     JSSceneView.prototype.clone = function (parent) { return null; };
@@ -1906,7 +1905,8 @@ var JSSceneView = /** @class */ (function (_super) {
     JSSceneView.prototype.getScale = function (scale) { return scale; };
     JSSceneView.prototype.parentWidth = function () { return this.getElement().parentElement.offsetWidth; };
     JSSceneView.prototype.parentHeight = function () { return this.getElement().parentElement.offsetHeight; };
-    JSSceneView.closeFullscreen = function () {
+    JSSceneView.prototype.exitFullscreen = function () {
+        var _this = this;
         var elt = document;
         if (elt.exitFullscreen) {
             elt.exitFullscreen();
@@ -1917,8 +1917,10 @@ var JSSceneView = /** @class */ (function (_super) {
         else if (elt.msExitFullscreen) { /* IE11 */
             elt.msExitFullscreen();
         }
+        this.getElement().removeEventListener("fullscreenchange", function (event) { _this.closeFullscreen(event); });
     };
-    JSSceneView.enterFullscreen = function (elt) {
+    JSSceneView.prototype.enterFullscreen = function (elt) {
+        var _this = this;
         if (elt.requestFullscreen) {
             elt.requestFullscreen();
         }
@@ -1928,19 +1930,31 @@ var JSSceneView = /** @class */ (function (_super) {
         else if (elt.msRequestFullscreen) { /* IE11 */
             elt.msRequestFullscreen();
         }
+        else {
+            console.log("JSSceneView.enterFullscreen: no handler available.");
+            return;
+        }
+        this.getElement().addEventListener("fullscreenchange", function (event) { _this.closeFullscreen(event); });
+    };
+    JSSceneView.prototype.inFullscreen = function () {
+        return document.fullscreenElement && (document.fullscreenElement == this.getElement());
+    };
+    JSSceneView.prototype.closeFullscreen = function (event) {
+        var _this = this;
+        if (!this.inFullscreen()) {
+            inscore.postMessageStrI("/ITL/" + this.getElement().id, "fullscreen", 0);
+            this.getElement().removeEventListener("fullscreenchange", function (event) { _this.closeFullscreen(event); });
+        }
     };
     JSSceneView.prototype.updateSpecific = function (obj) {
         var fullscreen = obj.getSceneInfos().fullscreen;
-        // there is an issue with the fullscreen mode
-        // with standard use, the model is not informed of the fullscreen mode exit
-        // if (fullscreen && !this.fFullScreen) {
-        // 	this.enterFullscreen(this.getElement() as fsElement);
-        // 	this.fFullScreen = true;
-        // }
-        // else if (!fullscreen && this.fFullScreen) {
-        // 	this.closeFullscreen();
-        // 	this.fFullScreen = false;
-        // }
+        var infull = this.inFullscreen();
+        if (fullscreen && !infull) {
+            this.enterFullscreen(this.getElement());
+        }
+        else if (!fullscreen && infull) {
+            this.exitFullscreen();
+        }
     };
     JSSceneView.prototype.updatePosition = function (pos, elt) {
         if (this.fAbsolutePos) {
