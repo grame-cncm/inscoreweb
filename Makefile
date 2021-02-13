@@ -63,6 +63,8 @@ help:
 	@echo "========== Development targets"
 	@echo "  ts           : build the typescript version"
 	@echo "  examples     : scan the $(DIST)/examples folder to generate the examples.json file"
+	@echo "  update       : update inscore libraries, assume to find them in $(ILIB)"
+	@echo "                 change this location using ILIB parameter e.g. 'make update ILIB=location'"
 	@echo "========== Deployment targets"
 	@echo "  libs         : update wasm libs in $(DIST)/lib folder from nodes_modules"
 	@echo "  font         : copy the guidofonts in $(DIST)/font from guido nodes module"

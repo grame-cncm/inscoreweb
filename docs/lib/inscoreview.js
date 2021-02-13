@@ -732,7 +732,7 @@ var JSAudioView = /** @class */ (function (_super) {
         if (media.rate >= 0)
             this.fAudio.playbackRate = media.rate;
         if (media.mdate >= 0)
-            this.fAudio.currentTime = media.mdate;
+            this.fAudio.currentTime = media.mdate / 1000;
     };
     return JSAudioView;
 }(JSAutoSize));
@@ -921,6 +921,7 @@ var JSFaustView = /** @class */ (function (_super) {
             var n = val.size();
             var _loop_1 = function (i) {
                 var v = val.get(i);
+                // console.log ("JSFaustView.updateSpecific setParamValue " + v.address + " " +v.value);
                 this_1.fAudioNode.setParamValue(v.address, v.value);
                 if ((v.type == 0) && v.value) // schedule the button off value
                     setTimeout(function () { _this.fAudioNode.setParamValue(v.address, 0); }, 100);
@@ -2046,7 +2047,7 @@ var JSVideoView = /** @class */ (function (_super) {
         if (media.rate >= 0)
             this.fVideo.playbackRate = media.rate;
         if (media.mdate >= 0)
-            this.fVideo.currentTime = media.mdate;
+            this.fVideo.currentTime = media.mdate / 1000;
         // video.fMLS       = this.fVideo.duration * 1000;
         // video.fVDuration = this.fVideo.duration / this.fVideo.playbackRate;
     };

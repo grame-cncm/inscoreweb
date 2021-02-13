@@ -122,7 +122,7 @@
 
 	function recall (index, x1, y1, x2, y2, x3, y3, x4, y4) {
 		let msg = "/ITL/scene/cpINDEXm/cp x XPOS;\n /ITL/scene/cpINDEXm/cp y YPOS;\n \
-		/ITL/scene/faustINDEX FaustDSP_karplus_params_freq FREQ; \n \
+		/ITL/scene/faustINDEX/FaustDSP/karplus/params/freq FREQ; \n \
 		/ITL/scene/pINDEX tempo TEMPO;"
 
 		let out = "";
@@ -159,10 +159,10 @@
 	);
 
 	/ITL/scene/cpreset watch mouseDown ( 
-		/ITL/scene/faust1 FaustDSP_karplus_params_freq $freq1,
-		/ITL/scene/faust2 FaustDSP_karplus_params_freq $freq2,
-		/ITL/scene/faust3 FaustDSP_karplus_params_freq $freq3,
-		/ITL/scene/faust4 FaustDSP_karplus_params_freq $freq4,
+		/ITL/scene/faust1/FaustDSP/karplus/params/freq $freq1,
+		/ITL/scene/faust2/FaustDSP/karplus/params/freq $freq2,
+		/ITL/scene/faust3/FaustDSP/karplus/params/freq $freq3,
+		/ITL/scene/faust4/FaustDSP/karplus/params/freq $freq4,
 		/ITL/scene/p1 tempo $tempo1,
 		/ITL/scene/p2 tempo $tempo2,
 		/ITL/scene/p3 tempo $tempo3,
@@ -179,25 +179,25 @@
 	ctrl1 =	( 
 		/ITL/scene/$self/cp x "$x[-1.,1.]",
 		/ITL/scene/$self/cp y "$y[-1.,1.]",
-		/ITL/scene/faust1 FaustDSP_karplus_params_freq "$y[1320,110]",
+		/ITL/scene/faust1/FaustDSP/karplus/params/freq "$y[1320,110]",
 		/ITL/scene/p1 tempo "$x[5,320]"
 	);
 	ctrl2 =	( 
 		/ITL/scene/$self/cp x "$x[-1.,1.]",
 		/ITL/scene/$self/cp y "$y[-1.,1.]",
-		/ITL/scene/faust2 FaustDSP_karplus_params_freq "$y[1320,110]",
+		/ITL/scene/faust2/FaustDSP/karplus/params/freq "$y[1320,110]",
 		/ITL/scene/p2 tempo "$x[5,320]"
 	);
 	ctrl3 =	( 
 		/ITL/scene/$self/cp x "$x[-1.,1.]",
 		/ITL/scene/$self/cp y "$y[-1.,1.]",
-		/ITL/scene/faust3 FaustDSP_karplus_params_freq "$y[1320,110]",
+		/ITL/scene/faust3/FaustDSP/karplus/params/freq "$y[1320,110]",
 		/ITL/scene/p3 tempo "$x[5,320]"
 	);
 	ctrl4 =	( 
 		/ITL/scene/$self/cp x "$x[-1.,1.]",
 		/ITL/scene/$self/cp y "$y[-1.,1.]",
-		/ITL/scene/faust4 FaustDSP_karplus_params_freq "$y[1320,110]",
+		/ITL/scene/faust4/FaustDSP/karplus/params/freq "$y[1320,110]",
 		/ITL/scene/p4 tempo "$x[5,320]"
 	);
 
@@ -256,34 +256,33 @@
 	/ITL/scene/faust* show 0;
 	/ITL/scene/faust* play 1;
 
-	/ITL/scene/faust1 FaustDSP_karplus_params_freq $freq1;
-	/ITL/scene/faust2 FaustDSP_karplus_params_freq $freq2;
-	/ITL/scene/faust3 FaustDSP_karplus_params_freq $freq3;
-	/ITL/scene/faust4 FaustDSP_karplus_params_freq $freq4;
-	/ITL/scene/faust* FaustDSP_karplus_params_damping 0.01;
-	/ITL/scene/faust2 FaustDSP_karplus_params_damping 0.001;
-	/ITL/scene/faust2 FaustDSP_Freeverb_Wet 0.1;
-	/ITL/scene/faust3 FaustDSP_Freeverb_Wet 0.01;
-	/ITL/scene/faust3 FaustDSP_Freeverb_0x00_RoomSize 0.9;
-	/ITL/scene/faust[23] FaustDSP_karplus_params_gain 0.5;
+	/ITL/scene/faust1/FaustDSP/karplus/params/freq $freq1;
+	/ITL/scene/faust2/FaustDSP/karplus/params/freq $freq2;
+	/ITL/scene/faust3/FaustDSP/karplus/params/freq $freq3;
+	/ITL/scene/faust4/FaustDSP/karplus/params/freq $freq4;
+	/ITL/scene/faust*/FaustDSP/karplus/params/damping 0.01;
+	/ITL/scene/faust2/FaustDSP/karplus/params/damping 0.001;
+	/ITL/scene/faust2/FaustDSP/Freeverb/Wet 0.1;
+	/ITL/scene/faust3/FaustDSP/Freeverb/Wet 0.01;
+	/ITL/scene/faust3/FaustDSP/Freeverb/0x00/RoomSize 0.9;
+	/ITL/scene/faust[23]/FaustDSP/karplus/params/gain 0.5;
 
-	gate = 'FaustDSP_karplus_gate';
-	/ITL/scene/p1 watch timeEnter 0.185 0.40 ( /ITL/scene/faust1 $gate 1 );
-	/ITL/scene/p1 watch timeEnter 0.41 0.70 ( /ITL/scene/faust1 $gate 1 );
-	/ITL/scene/p1 watch timeEnter 0.71 0.80 ( /ITL/scene/faust1 $gate 1 );
-	/ITL/scene/p1 watch timeEnter 0.90 1. 	( /ITL/scene/faust1 $gate 1 );
+	/ITL/scene/p1 watch timeEnter 0.185 0.40 ( /ITL/scene/faust1/FaustDSP/karplus/gate 1 );
+	/ITL/scene/p1 watch timeEnter 0.41 0.70  ( /ITL/scene/faust1/FaustDSP/karplus/gate 1 );
+	/ITL/scene/p1 watch timeEnter 0.71 0.80  ( /ITL/scene/faust1/FaustDSP/karplus/gate 1 );
+	/ITL/scene/p1 watch timeEnter 0.90 1. 	 ( /ITL/scene/faust1/FaustDSP/karplus/gate 1 );
 	
-	/ITL/scene/p2 watch timeEnter 0.139 0.17 ( /ITL/scene/faust2 $gate 1 );
-	/ITL/scene/p2 watch timeEnter 0.27 0.3 	 ( /ITL/scene/faust2 $gate 1 );
-	/ITL/scene/p2 watch timeEnter 0.685 0.75 ( /ITL/scene/faust2 $gate 1 );
-	/ITL/scene/p2 watch timeEnter 0.822 0.88 ( /ITL/scene/faust2 $gate 1 );
+	/ITL/scene/p2 watch timeEnter 0.139 0.17 ( /ITL/scene/faust2/FaustDSP/karplus/gate 1 );
+	/ITL/scene/p2 watch timeEnter 0.27 0.3 	 ( /ITL/scene/faust2/FaustDSP/karplus/gate 1 );
+	/ITL/scene/p2 watch timeEnter 0.685 0.75 ( /ITL/scene/faust2/FaustDSP/karplus/gate 1 );
+	/ITL/scene/p2 watch timeEnter 0.822 0.88 ( /ITL/scene/faust2/FaustDSP/karplus/gate 1 );
 	
-	/ITL/scene/p3 watch timeEnter 0.185 0.2 ( /ITL/scene/faust3 $gate 1 );
-	/ITL/scene/p3 watch timeEnter 0.32 0.38 ( /ITL/scene/faust3 $gate 1 );
-	/ITL/scene/p3 watch timeEnter 0.69 0.7  ( /ITL/scene/faust3 $gate 1 );
-	/ITL/scene/p3 watch timeEnter 0.82 0.88 ( /ITL/scene/faust3 $gate 1 );
+	/ITL/scene/p3 watch timeEnter 0.185 0.2  ( /ITL/scene/faust3/FaustDSP/karplus/gate 1 );
+	/ITL/scene/p3 watch timeEnter 0.32 0.38  ( /ITL/scene/faust3/FaustDSP/karplus/gate 1 );
+	/ITL/scene/p3 watch timeEnter 0.69 0.7   ( /ITL/scene/faust3/FaustDSP/karplus/gate 1 );
+	/ITL/scene/p3 watch timeEnter 0.82 0.88  ( /ITL/scene/faust3/FaustDSP/karplus/gate 1 );
 	
-	/ITL/scene/p4 watch timeEnter 0.16 0.2 ( /ITL/scene/faust4 $gate 1 );
-	/ITL/scene/p4 watch timeEnter 0.26 0.3 ( /ITL/scene/faust4 $gate 1 );
-	/ITL/scene/p4 watch timeEnter 0.653 0.7  ( /ITL/scene/faust4 $gate 1 );
-	/ITL/scene/p4 watch timeEnter 0.762 0.81 ( /ITL/scene/faust4 $gate 1 );
+	/ITL/scene/p4 watch timeEnter 0.16 0.2   ( /ITL/scene/faust4/FaustDSP/karplus/gate 1 );
+	/ITL/scene/p4 watch timeEnter 0.26 0.3   ( /ITL/scene/faust4/FaustDSP/karplus/gate 1 );
+	/ITL/scene/p4 watch timeEnter 0.653 0.7  ( /ITL/scene/faust4/FaustDSP/karplus/gate 1 );
+	/ITL/scene/p4 watch timeEnter 0.762 0.81 ( /ITL/scene/faust4/FaustDSP/karplus/gate 1 );
