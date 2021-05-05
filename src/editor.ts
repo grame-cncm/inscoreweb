@@ -1,6 +1,13 @@
 
-///<reference path="lib/inscore.d.ts"/>
+///<reference types="@grame/inscorejs"/>
 ///<reference path="download.ts"/>
+///<reference path="href.ts"/>
+
+interface RequiredLibs {
+	guido: boolean,
+	xml : boolean,
+	faust: boolean
+}
 
 //----------------------------------------------------------------------------
 // this is the editor part, currently using CodeMirror
@@ -92,7 +99,41 @@ class InscoreEditor {
 	}
 	
 	saveInscore () 			{ download (this.fFileName + ".inscore",  this.fEditor.getValue()); }
-	saveHtml () 			{ download (this.fFileName + ".html",  document.getElementById("scene").innerHTML);  }
+	// saveHtml () 			{ download (this.fFileName + ".html",  document.getElementById("scene").innerHTML);  }
+	saveHtml () 			{ download (this.fFileName + ".html",  this.getHtml());  }
+	requiredLibraries( script: string) : RequiredLibs	{
+		let guido = (script.search (/set[ 	][ 	]*gmn/) + script.search (/set[ 	][ 	]*pianoroll/))  >1;
+		let xml = script.search (/set[ 	][ 	]*xml/) >1;
+		if (xml) guido = true;
+		let faust = script.search (/set[ 	][ 	]*faust/) >1;
+		return { guido: guido, xml : xml, faust: faust };
+	}
+	linkLibraries(script: string) 	{
+		let req = this.requiredLibraries (script);
+		let libs = 	"<link href=\"" + gLibsHref + "/fonts/fonts.css\" rel=\"stylesheet\">\n";
+		libs += "<script src=\"" + gLibsHref + "/libINScore.js\"></script>\n";
+		libs += "<script src=\"" + gLibsHref + "/INScoreJS.js\"></script>\n";
+		if (req.guido)
+			libs += "<script src=\"" + gLibsHref + "/libGUIDOEngine.js\"></script>\n";
+		if (req.xml)
+			libs += "<script src=\"" + gLibsHref + "/libmusicxml.js\"></script>\n";
+		if (req.faust) {
+			libs += "<script src=\"" + gLibsHref + "/libfaust-wasm.js\"></script>\n";
+			libs += "<script src=\"" + gLibsHref + "/FaustLibrary.js\"></script>\n";
+		}
+		return libs;
+	}
+	getHtml () 	{
+			let script = this.fEditor.getValue();
+			let header = "<html>\n<head>\n";
+			header += "	<meta http-equiv=\"Content-Type\" content=\"text/html;charset=utf-8\" >\n";
+			header += "	<title>INScoreWeb</title>\n";
+			header += this.linkLibraries(script);
+			header += "	<style>.inscore { background-color: white; width: 100%; height: 100%; }</style>\n";
+			header += "</head>\n<body>\n<div class=\"inscore\" id=\"scene\">\n";
+			let footer = "</div>\n</body>\n</html>";
+			return header + script.replace(/</g, "&lt;") + footer;
+	}
 
 	setInscore ( script: string, path: string = null): void {
 		let ext = "inscore";
