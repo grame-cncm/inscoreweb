@@ -9,5 +9,5 @@
 /ITL/scene/frame color 230 230 230;
 
 /ITL/scene/score set gmn '[ \meter<"4/4"> \key<-1> a f g c c g a f ]';
-/ITL/scene/score scale 0.6;
+/ITL/scene/score width 1.5;
 

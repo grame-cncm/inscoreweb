@@ -254,7 +254,7 @@
 	/ITL/scene/faust3 set faust $dsp;
 	/ITL/scene/faust4 set faust $dsp;
 	/ITL/scene/faust* show 0;
-	/ITL/scene/faust* play 1;
+	/ITL/scene/faust* connect audioOutput;
 
 	/ITL/scene/faust1/FaustDSP/karplus/params/freq $freq1;
 	/ITL/scene/faust2/FaustDSP/karplus/params/freq $freq2;

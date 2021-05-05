@@ -25,6 +25,8 @@ url = "https://inscoreweb.grame.fr/";
 
 /ITL/scene/score set gmn "[ a f# g ]";
 /ITL/scene/score effect $shadow;
+/ITL/scene/score penWidth 1;
+/ITL/scene/score penColor lightgrey;
 /ITL/scene/score scale 1.2;
 /ITL/scene/score y -0.05;
 
