@@ -8,7 +8,7 @@
 MAKE ?= make
 
 # define inscore project location (will be useless when published to npm)
-INSCOREJS ?= ../inscore/javascript
+INSCOREJS ?=  node_modules/@grame/inscorejs
 
 # define modules dependencies
 GUIDONODE := node_modules/@grame/guidolib
@@ -41,7 +41,6 @@ CSS      := $(CSSDIR)/codemirror.min.css $(CSSDIR)/bootstrap.min.css
 .PHONY: examples
 
 all:
-	$(MAKE) update
 	$(MAKE) examples
 	$(MAKE) ts
 	$(MAKE) libs
@@ -49,18 +48,6 @@ all:
 	$(MAKE) css
 	$(MAKE) readme
 	git checkout $(DIST)/CNAME
-
-
-update: $(LIBDIR) $(LIBDIR)/inscoreview.js $(LIBDIR)/libINScore.js $(LIBDIR)/libINScore.wasm 
-
-$(LIBDIR)/inscoreview.js: $(INSCOREJS)/inscoreview.js
-	cp $< $@
-
-$(LIBDIR)/libINScore.js: $(INSCOREJS)/lib/libINScore.js
-	cp $< $@
-
-$(LIBDIR)/libINScore.wasm: $(INSCOREJS)/lib/libINScore.wasm
-	cp $< $@
 
 test : 
 	@echo $(TSFILES)
@@ -77,13 +64,12 @@ help:
 	@echo "========== Development targets"
 	@echo "  ts           : build the typescript version"
 	@echo "  examples     : scan the $(DIST)/examples folder to generate the examples.json file"
-	@echo "  update       : update inscore libraries, assume to find them in $(INSCOREJS)"
-	@echo "                 change this location using INSCOREJS option e.g. 'make update INSCOREJS=location'"
 	@echo "  clean        : remove the minified files"
 	@echo "========== Deployment targets"
 	@echo "  libs         : update wasm libs in $(DIST)/lib folder from nodes_modules"
 	@echo "  font         : copy the guidofonts in $(DIST)/font from guido nodes module"
 	@echo "  css          : generates minified version of css files"
+	@echo "  deplibs      : build an archive with all the dependent libraries named using sha"
 	@echo "  readme       : generates README.html from README.md"
 
 
@@ -93,12 +79,28 @@ ts : $(TSLIB) $(DIST)/inscoreEditor.js
 $(DIST)/inscoreEditor.js : $(TSFILES)
 	cd $(TSFOLDER) && tsc
 
+deplibs: TMPNAME := __tmp__
+deplibs:
+	[ -d $(TMPNAME) ] || mkdir $(TMPNAME)
+	cp docs/lib/lib* docs/lib/FaustLibrary.js $(TMPNAME)
+	cp node_modules/@grame/inscorejs/INScoreJS.js $(TMPNAME)
+	cp -r node_modules/@grame/inscorejs/fonts $(TMPNAME)
+	$(MAKE) deparch FOLDER=$(TMPNAME)
+
+deparch: ARCHNAME = $(shell shasum $(FOLDER) | sed 's/ ..*//')
+deparch:
+	@echo Building archive $(ARCHNAME)
+	mv $(FOLDER) $(ARCHNAME)
+	tar czf $(ARCHNAME).tgz $(ARCHNAME)
+	echo "var gLibsHref = \"https://berio.grame.fr/jslibs/"$(ARCHNAME)"\"" > src/href.ts
+
 libs: $(LIBDIR) 
-	cp $(INSCOREJS)/lib/libINScore.js 	$(LIBDIR)
-	cp $(INSCOREJS)/lib/libINScore.wasm $(LIBDIR)
+	cp $(INSCOREJS)/libINScore.js 		$(LIBDIR)
+	cp $(INSCOREJS)/libINScore.wasm 	$(LIBDIR)
+	cp $(INSCOREJS)/dev/inscoreview.js	$(LIBDIR)
 	cp $(GUIDONODE)/libGUIDOEngine.js 	$(LIBDIR)
-	cp $(GUIDONODE)/libGUIDOEngine.wasm $(LIBDIR)
-	cp $(LXMLNODE)/libmusicxml.js 		$(LIBDIR)
+	cp $(GUIDONODE)/libGUIDOEngine.wasm	$(LIBDIR)
+	cp $(LXMLNODE)/libmusicxml.js   	$(LIBDIR)
 	cp $(LXMLNODE)/libmusicxml.wasm 	$(LIBDIR)
 	cp $(FAUSTNODE)/libfaust-wasm.js 	$(LIBDIR)
 	cp $(FAUSTNODE)/libfaust-wasm.wasm 	$(LIBDIR)
