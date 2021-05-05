@@ -1,5 +1,5 @@
 
-///<reference path="../src/lib/inscore.d.ts"/>
+///<reference types="@grame/inscorejs"/>
 ///<reference path="constants.ts"/>
 
 class INScoreDiv {

@@ -1,4 +1,5 @@
 
+///<reference types="@grame/inscorejs"/>
 ///<reference path="editor.ts"/>
 ///<reference path="editorGlue.ts"/>
 
