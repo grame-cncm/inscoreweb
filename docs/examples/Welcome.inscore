@@ -16,17 +16,15 @@ url = "https://inscoreweb.grame.fr/";
 
 /ITL/scene/version set txt "Version" $(/ITL get version);
 /ITL/scene/version fontSize 14;
-/ITL/scene/version y -0.55;
+/ITL/scene/version y -0.6;
 
 /ITL/scene/what set html '<div style="text-align: center">An environment for the design of
 <br />interactive, augmented music scores.</div>';
 /ITL/scene/what y -0.34;
-/ITL/scene/what fontSize 18;
+/ITL/scene/what fontSize 20;
 
 /ITL/scene/score set gmn "[ a f# g ]";
 /ITL/scene/score effect $shadow;
-/ITL/scene/score penWidth 1;
-/ITL/scene/score penColor lightgrey;
 /ITL/scene/score scale 1.2;
 /ITL/scene/score y -0.05;
 
@@ -36,6 +34,11 @@ More information on <br />
 <a href=https://inscore.grame.fr style="font-size: 110%" target=_blank>inscore.grame.fr</a></span>';
 /ITL/scene/comment y 0.28;
 
+alpha = 160;
 /ITL/scene/logo set img $url + "imgs/grame.png";
-/ITL/scene/logo scale 0.2;
-/ITL/scene/logo y 0.6;
+/ITL/scene/logo width 0.3;
+/ITL/scene/logo y 0.5;
+/ITL/scene/logo alpha $alpha;
+/ITL/scene/logo watch mouseEnter (/ITL/scene/logo alpha 255);
+/ITL/scene/logo watch mouseLeave (/ITL/scene/logo alpha $alpha);
+/ITL/scene/logo watch mouseDown (/ITL browse "https://www.grame.fr");

@@ -38,16 +38,68 @@ var __extends = (this && this.__extends) || (function () {
     var extendStatics = function (d, b) {
         extendStatics = Object.setPrototypeOf ||
             ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
         return extendStatics(d, b);
     };
     return function (d, b) {
+        if (typeof b !== "function" && b !== null)
+            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
         extendStatics(d, b);
         function __() { this.constructor = d; }
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
 ///<reference path="lib/inscore.d.ts"/>
+var AIOScanner = /** @class */ (function () {
+    function AIOScanner() {
+    }
+    AIOScanner.init = function () {
+        if (!AIOScanner.fAudioContext) {
+            AIOScanner.fAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+            AIOScanner.unlockAudioContext(AIOScanner.fAudioContext);
+        }
+    };
+    AIOScanner.scan = function (address) {
+        AIOScanner.fOutput = AIOScanner.fAudioContext.destination;
+        AIOScanner.send(address, AIOScanner.kOutputName, AIOScanner.fOutput);
+        navigator.mediaDevices.getUserMedia({ audio: true, video: false }).then(function (stream) {
+            AIOScanner.fInput = AIOScanner.fAudioContext.createMediaStreamSource(stream);
+            AIOScanner.send(address, AIOScanner.kInputName, AIOScanner.fInput);
+        })
+            .catch(function (err) {
+            AIOScanner.send(address, AIOScanner.kInputName, null);
+            // silently ignore missing input device
+            //            console.log("AIOScanner can't get input device: " + err);
+        });
+    }; // Get All Physical in/out and populate finput & foutput
+    AIOScanner.send = function (address, name, node) {
+        var msg = inscore.newMessageM("set");
+        var prefix = address.substring(0, address.lastIndexOf("/"));
+        inscore.msgAddStr(msg, "audioio");
+        inscore.msgAddI(msg, node ? (node.numberOfInputs ? node.channelCount : 0) : 0); // nb input
+        inscore.msgAddI(msg, node ? (node.numberOfOutputs ? node.channelCount : 0) : 0); // nb output
+        inscore.postMessage(prefix + "/" + name + "", msg);
+    }; // can send a set audioio message for each physical input/output
+    AIOScanner.unlockclean = function () {
+        var _this = this;
+        AIOScanner.fUnlockEvents.forEach(function (e) { return document.body.removeEventListener(e, _this.unlock); });
+    };
+    AIOScanner.unlock = function () { AIOScanner.fAudioContext.resume().then(AIOScanner.unlockclean); };
+    AIOScanner.unlockAudioContext = function (audioCtx) {
+        if (audioCtx.state !== "suspended")
+            return;
+        AIOScanner.fUnlockEvents.forEach(function (e) { return document.body.addEventListener(e, AIOScanner.unlock, false); });
+    };
+    AIOScanner.fInput = null;
+    AIOScanner.fOutput = null;
+    AIOScanner.kInputName = "audioInput";
+    AIOScanner.kOutputName = "audioOutput";
+    AIOScanner.fAudioContext = null;
+    AIOScanner.fUnlockEvents = ["touchstart", "touchend", "mousedown", "keydown"];
+    return AIOScanner;
+}());
+///<reference path="lib/inscore.d.ts"/>
+///<reference path="lib/libINScore.d.ts"/>
 //----------------------------------------------------------------------------
 // INScore interface
 //----------------------------------------------------------------------------
@@ -158,6 +210,7 @@ var Blurhint;
 var inscore = null;
 ///<reference path="lib/libINScore.d.ts"/>
 ///<reference path="lib/libINScore.d.ts"/>
+///<reference path="AudioObject.ts"/>
 ///<reference path="inscore.ts"/>
 ///<reference path="interfaces.ts"/>
 // events types
@@ -177,7 +230,7 @@ var JSObjectView = /** @class */ (function () {
         this.fParent = parent;
         this.fElement = elt;
         this.fSyncManager = null;
-        this.fIObject = 0;
+        this.fIObject = null;
         this.fOrigin = { x: 0, y: 0 };
         if (parent)
             parent.getElement().appendChild(elt);
@@ -192,7 +245,7 @@ var JSObjectView = /** @class */ (function () {
     JSObjectView.prototype.getId = function () { return this.fID; };
     JSObjectView.prototype.getElement = function () { return this.fElement; };
     JSObjectView.prototype.getParent = function () { return this.fParent; };
-    JSObjectView.prototype["delete"] = function () {
+    JSObjectView.prototype.delete = function () {
         if (this.fSyncManager)
             this.fSyncManager.clean();
         var parent = this.getElement().parentNode; // parent could be deleted
@@ -200,6 +253,7 @@ var JSObjectView = /** @class */ (function () {
             parent.removeChild(this.getElement());
         JSObjectView.fObjects[this.fID] = null;
     };
+    JSObjectView.prototype.toAudioObject = function () { return null; };
     JSObjectView.prototype.parentWidth = function () {
         var elt = this.getElement().parentElement;
         return Math.min(elt.clientWidth, elt.clientHeight);
@@ -208,7 +262,7 @@ var JSObjectView = /** @class */ (function () {
         var elt = this.getElement().parentElement;
         return Math.min(elt.clientWidth, elt.clientHeight);
     };
-    JSObjectView.prototype.updateSpecial = function (obj, oid) { return true; };
+    JSObjectView.prototype.updateSpecial = function (obj /*, oid: number*/) { return true; };
     JSObjectView.prototype.updateSpecific = function (obj) { };
     // the scale applied to preserve proportional rendering regarding scene size
     JSObjectView.prototype.parentScale = function () {
@@ -226,23 +280,31 @@ var JSObjectView = /** @class */ (function () {
     };
     JSObjectView.prototype.getSyncRatio = function () { return this.getParent().parentSyncRatio(); };
     //---------------------------------------------------------------------
+    // synchronous initialisation method - must be overriden by subclasses
+    //---------------------------------------------------------------------
+    JSObjectView.prototype.initView = function (obj) { return true; };
+    //---------------------------------------------------------------------
     // update methods
     //---------------------------------------------------------------------
-    JSObjectView.prototype.updateView = function (obj, oid, master, force, keepRatio) {
+    JSObjectView.prototype.updateView = function (obj, /*oid: number,*/ master, force, keepRatio) {
         if (keepRatio === void 0) { keepRatio = false; }
         if (obj.deleted()) {
-            this["delete"]();
+            this.delete();
             return;
         }
-        if (this.fSyncManager && this.fSyncManager.updateSync(obj, oid))
+        if (this.fSyncManager && this.fSyncManager.updateSync(obj))
             return; // object is synchronized, update is done
         if (obj.newData())
-            if (!this.updateSpecial(obj, oid))
+            if (!this.updateSpecial(obj /*, oid*/))
                 return;
         var infos = obj.getUpdateInfos(master);
         if (keepRatio) {
             var r = this.getSyncRatio();
             infos.position.scale /= r;
+        }
+        if (infos.newclass) {
+            this.getElement().className = infos.classNames;
+            force = true;
         }
         if (infos.updatecolor)
             this.updateColor(infos.color);
@@ -457,12 +519,12 @@ var JSObjectView = /** @class */ (function () {
     JSObjectView.prototype.scene2RelativeY = function (y) { return y / (this.parentHeight() / 2.0) - 1; };
     //---------------------------------------------------------------------
     // called to update object size on model side
-    JSObjectView.prototype.updateObjectSize = function (objid, w, h) {
-        var obj = INScore.objects().create(objid);
-        this.updateObjectSizeSync(obj, w, h);
-        INScore.objects().del(obj);
-    };
-    JSObjectView.prototype.updateObjectSizeSync = function (obj, w, h) {
+    // updateObjectSize (objid : number, w: number, h: number) : void {
+    // 	let obj = INScore.objects().create(objid);
+    // 	this.updateObjectSizeSync (obj, w, h);
+    // 	INScore.objects().del (obj);		
+    // }
+    JSObjectView.prototype.updateObjectSize = function (obj, w, h) {
         obj.updateWidth(this.scene2RelativeWidth(w));
         obj.updateHeight(this.scene2RelativeHeight(h));
         var div = this.getElement();
@@ -500,16 +562,32 @@ var JSObjectView = /** @class */ (function () {
     //---------------------------------------------------------------------
     // Main update method
     // id  : the view id 
-    // oid : the IObject id (actually a pointer stored as number)
+    // optr : the IObject id (actually a pointer stored as number)
     // forcepos : used to enforce updatePosition
-    JSObjectView.updateObjectView = function (id, oid, forcepos) {
+    JSObjectView.updateObjectView = function (id, optr, forcepos) {
         var view = JSObjectView.fObjects[id];
         if (view) {
-            view.setIObject(oid);
+            view.setIObject(optr);
             try {
-                var obj = INScore.objects().create(oid);
-                view.updateView(obj, oid, 0, forcepos);
-                INScore.objects().del(obj);
+                var obj = INScore.objects().adapter(optr);
+                view.updateView(obj, 0, forcepos);
+            }
+            catch (error) {
+                console.error(error);
+            }
+        }
+    };
+    //---------------------------------------------------------------------
+    // Synchronous init method
+    // id  : the view id 
+    // optr : the IObject id (actually a pointer stored as number)
+    JSObjectView.initObjectView = function (id, optr) {
+        var view = JSObjectView.fObjects[id];
+        if (view) {
+            view.setIObject(optr);
+            try {
+                var obj = INScore.objects().adapter(optr);
+                view.initView(obj);
             }
             catch (error) {
                 console.error(error);
@@ -520,6 +598,64 @@ var JSObjectView = /** @class */ (function () {
     JSObjectView.fGlobalID = 0;
     JSObjectView.fObjects = new Array();
     return JSObjectView;
+}());
+///<reference path="lib/libINScore.d.ts"/>
+///<reference path="JSObjectView.ts"/>
+///<reference path="AudioObject.ts"/>
+;
+var AudioTools = /** @class */ (function () {
+    function AudioTools() {
+    }
+    AudioTools.updateConnections = function (obj, view) {
+        var cnx = obj.getAudioInfos();
+        AudioTools.doit(view, cnx.connect, AudioTools.connectSrcDest, "connect");
+        AudioTools.doit(view, cnx.disconnect, AudioTools.disconnectSrcDest, "disconnect");
+    };
+    AudioTools.connectSrcDest = function (src, dest) {
+        if (src && dest) {
+            try {
+                src.connect(dest);
+            }
+            catch (error) {
+                console.log("Exception while calling AudioNode connect: " + error);
+            }
+            return true;
+        }
+        console.log("AudioTools error: trying to connect null AudioNode (" + src + " " + dest + ")");
+        return false;
+    };
+    AudioTools.disconnectSrcDest = function (src, dest) {
+        if (src && dest) {
+            try {
+                src.disconnect(dest);
+            }
+            catch (error) {
+                console.log("Exception while calling AudioNode disconnect: " + error);
+            }
+            return true;
+        }
+        console.log("AudioTools error: trying to disconnect null AudioNode (" + src + " " + dest + ")");
+        return false;
+    };
+    AudioTools.doit = function (view, list, cnx, op) {
+        var n = list.size();
+        for (var i = 0; i < n; i++) {
+            var tmp = JSObjectView.getObjectView(list.get(i));
+            if (tmp) {
+                var dest = tmp.toAudioObject();
+                var src = view.toAudioObject();
+                if (src && dest)
+                    cnx(src.getAudioNode(), dest.getAudioNode());
+                else {
+                    console.log("AudioTools " + op + " error: not an audio object: " + view + " -> " + tmp);
+                }
+            }
+            else {
+                console.log("AudioTools error: incorrect view received by " + op + " method: " + list.get(i));
+            }
+        }
+    };
+    return AudioTools;
 }());
 ///<reference path="JSObjectView.ts"/>
 var JSSvgBase = /** @class */ (function (_super) {
@@ -604,7 +740,7 @@ var JSArcView = /** @class */ (function (_super) {
     JSArcView.prototype.toString = function () { return "JSArcView"; };
     JSArcView.prototype.getSVGTarget = function () { return this.fArc; };
     JSArcView.prototype.updateSVGDimensions = function (w, h) { };
-    JSArcView.prototype.updateSpecial = function (obj, objid) {
+    JSArcView.prototype.updateSpecial = function (obj) {
         var arc = obj.getArcInfos();
         var r1 = this.relative2SceneWidth(arc.width) / 2;
         var r2 = this.relative2SceneHeight(arc.height) / 2;
@@ -660,25 +796,10 @@ var JSArcView = /** @class */ (function (_super) {
     return JSArcView;
 }(JSSvgBase));
 ///<reference path="JSObjectView.ts"/>
-var TASyncUpdate = /** @class */ (function () {
-    function TASyncUpdate() {
-    }
-    TASyncUpdate.update = function (oid, f) {
-        var obj = INScore.objects().create(oid);
-        var ret = f(obj);
-        INScore.objects().del(obj);
-        return ret;
-    };
-    return TASyncUpdate;
-}());
-///<reference path="JSObjectView.ts"/>
-///<reference path="TASyncUpdate.ts"/>
 var JSAutoSize = /** @class */ (function (_super) {
     __extends(JSAutoSize, _super);
     function JSAutoSize(elt, parent) {
         return _super.call(this, elt, parent) || this;
-        // elt.style.height = "auto";
-        // elt.style.width  = "auto";
     }
     JSAutoSize.prototype.getAutoSize = function () {
         var elt = this.getElement();
@@ -686,23 +807,74 @@ var JSAutoSize = /** @class */ (function (_super) {
     };
     JSAutoSize.prototype.updateSizeSync = function (obj) {
         var p = this.getAutoSize();
-        this.updateObjectSizeSync(obj, p.x, p.y);
+        this.updateObjectSize(obj, p.x, p.y);
         obj.ready();
         return true;
     };
-    JSAutoSize.prototype.updateSizeASync = function (objid) {
+    JSAutoSize.prototype.updateSizeASync = function (obj) {
         var _this = this;
         var size = this.getAutoSize();
         if (!size.x || !size.y)
-            setTimeout(function () { return _this.updateSizeASync(objid); }, 20);
+            setTimeout(function () { return _this.updateSizeASync(obj); }, 20);
         else {
-            return TASyncUpdate.update(objid, function (obj) { return _this.updateSizeSync(obj); });
+            return this.updateSizeSync(obj);
         }
         return false;
     };
     return JSAutoSize;
 }(JSObjectView));
+///<reference path="lib/libINScore.d.ts"/>
 ///<reference path="JSAutoSize.ts"/>
+///<reference path="AIOScanner.ts"/>
+///<reference path="AudioObject.ts"/>
+var TMedia = /** @class */ (function (_super) {
+    __extends(TMedia, _super);
+    function TMedia(elt, parent) {
+        var _this = _super.call(this, elt, parent) || this;
+        _this.fReady = false;
+        _this.fListen = false;
+        _this.fAudioNode = null;
+        _this.fAudioNode = AIOScanner.fAudioContext.createMediaElementSource(elt);
+        _this.fAudioNode.connect(AIOScanner.fAudioContext.destination);
+        return _this;
+    }
+    TMedia.prototype.addHandlers = function (elt, obj) {
+        var _this = this;
+        if (!this.fListen) {
+            elt.addEventListener("ended", function (event) { _this.end(obj); });
+            elt.addEventListener("error", function (event) { _this.error(event, obj); });
+            elt.addEventListener("canplay", function (event) { _this.ready(obj, elt); });
+            this.fListen = true;
+        }
+        this.fReady = false;
+    };
+    TMedia.prototype.ready = function (obj, elt) {
+        if (!this.fReady) {
+            obj.updateDuration(elt.duration * 1000);
+            obj.setAudioInOut(this.getNumInputs(), this.getNumOutputs());
+            obj.ready();
+            // the connect message is intended to sync the model with the existing connection
+            inscore.postMessageStrStr(obj.getOSCAddress(), "connect", AIOScanner.kOutputName);
+            inscore.postMessageStrStr(obj.getOSCAddress(), "event", "ready");
+            // obj.event ("ready");
+            this.fReady = true;
+        }
+    };
+    TMedia.prototype.end = function (obj) { obj.event("end"); };
+    TMedia.prototype.error = function (event, obj) {
+        console.log(obj.getOSCAddress() + ": " + event.message);
+        obj.event("error");
+    };
+    TMedia.prototype.toAudioObject = function () { return this; };
+    TMedia.prototype.getNumInputs = function () { return 0; };
+    TMedia.prototype.getNumOutputs = function () { return this.fAudioNode ? this.fAudioNode.channelCount : 0; };
+    TMedia.prototype.getAudioNode = function () { return this.fAudioNode; };
+    return TMedia;
+}(JSAutoSize));
+///<reference path="JSAutoSize.ts"/>
+///<reference path="TMedia.ts"/>
+///<reference path="AIOScanner.ts"/>
+///<reference path="AudioTools.ts"/>
 var JSAudioView = /** @class */ (function (_super) {
     __extends(JSAudioView, _super);
     function JSAudioView(parent) {
@@ -711,18 +883,22 @@ var JSAudioView = /** @class */ (function (_super) {
         _this = _super.call(this, audio, parent) || this;
         _this.fAudio = audio;
         _this.fFile = "";
-        _this.getElement().className = "inscore-audio";
         return _this;
     }
     JSAudioView.prototype.clone = function (parent) { return new JSAudioView(parent); };
-    JSAudioView.prototype.updateSpecial = function (obj, objid) {
+    JSAudioView.prototype.toString = function () { return "JSAudioView"; };
+    JSAudioView.prototype.updateSpecial = function (obj) {
+        AIOScanner.scan(obj.getOSCAddress());
+        this.addHandlers(this.fAudio, obj);
         this.fAudio.src = obj.getFile();
-        return this.updateSizeASync(objid);
+        this.fAudio.currentTime = 0;
+        return this.updateSizeASync(obj);
     };
     JSAudioView.prototype.setShadow = function (elt, val) {
         this.fAudio.style.filter = "drop-shadow(" + val.color + " " + val.xOffset + "px " + val.yOffset + "px " + val.blur + "px)";
     };
     JSAudioView.prototype.updateSpecific = function (obj) {
+        AudioTools.updateConnections(obj, this);
         var media = obj.getMediaInfos();
         if (media.playing)
             this.fAudio.play();
@@ -735,7 +911,50 @@ var JSAudioView = /** @class */ (function (_super) {
             this.fAudio.currentTime = media.mdate / 1000;
     };
     return JSAudioView;
-}(JSAutoSize));
+}(TMedia));
+///<reference path="JSObjectView.ts"/>
+///<reference path="AudioObject.ts"/>
+///<reference path="AIOScanner.ts"/>
+///<reference path="AudioTools.ts"/>
+var JSAudioioView = /** @class */ (function (_super) {
+    __extends(JSAudioioView, _super);
+    function JSAudioioView(parent) {
+        var _this = _super.call(this, document.createElement('div'), parent) || this;
+        _this.fAudioNode = null;
+        return _this;
+    }
+    JSAudioioView.prototype.toAudioObject = function () { return this; };
+    JSAudioioView.prototype.getNumInputs = function () { return this.fAudioNode ? this.fAudioNode.channelCount : 0; };
+    JSAudioioView.prototype.getNumOutputs = function () { return this.fAudioNode ? this.fAudioNode.channelCount : 0; };
+    JSAudioioView.prototype.getAudioNode = function () { return this.fAudioNode; };
+    JSAudioioView.prototype.clone = function (parent) {
+        return new JSAudioioView(parent);
+    };
+    JSAudioioView.prototype.updateSpecific = function (obj) {
+        AudioTools.updateConnections(obj, this);
+    };
+    JSAudioioView.prototype.initView = function (obj) {
+        var infos = obj.getIOInfos();
+        if (infos.inputs && infos.outputs) {
+            console.log("Warning: JSAudioioView created with " + infos.inputs + " inputs and " + infos.outputs + " outputs.");
+        }
+        if (infos.inputs) {
+            this.fAudioNode = AIOScanner.fOutput;
+            if (this.getNumInputs() != infos.inputs)
+                console.log("JSAudioioView Warning: device has not the requested number of inputs: " + this.getNumInputs() + " instead of " + infos.inputs);
+        }
+        else if (infos.outputs) {
+            this.fAudioNode = AIOScanner.fInput;
+            if (this.getNumOutputs() != infos.outputs)
+                console.log("JSAudioioView Warning: device has not the requested number of outputs: " + this.getNumOutputs() + " instead of " + infos.outputs);
+        }
+        return true;
+    };
+    JSAudioioView.prototype.updateSpecial = function (obj) {
+        return true;
+    };
+    return JSAudioioView;
+}(JSObjectView));
 ///<reference path="JSSVGBase.ts"/>
 var JSCurveView = /** @class */ (function (_super) {
     __extends(JSCurveView, _super);
@@ -752,7 +971,7 @@ var JSCurveView = /** @class */ (function (_super) {
     JSCurveView.prototype.toString = function () { return "JSCurveView"; };
     JSCurveView.prototype.getSVGTarget = function () { return this.fCurve; };
     JSCurveView.prototype.updateSVGDimensions = function (w, h) { };
-    JSCurveView.prototype.updateSpecial = function (obj, objid) {
+    JSCurveView.prototype.updateSpecial = function (obj) {
         var curve = obj.getCurveInfos();
         var n = curve.size();
         for (var i = 0; i < (n - 7); i += 8) {
@@ -760,7 +979,7 @@ var JSCurveView = /** @class */ (function (_super) {
             this.fCurve.setAttribute('d', "M" + ps[0] + "," + ps[1] + " C" + ps[2] + "," + ps[3] + " " + ps[4] + "," + ps[5] + " " + ps[6] + "," + ps[7]);
             // update object size
             var bb = this.fSVG.getBBox();
-            -this.updateObjectSizeSync(obj, bb.width, bb.height);
+            -this.updateObjectSize(obj, bb.width, bb.height);
         }
         return true;
     };
@@ -792,6 +1011,8 @@ var JSEllipseView = /** @class */ (function (_super) {
     JSEllipseView.prototype.clone = function (parent) { return new JSEllipseView(parent); };
     JSEllipseView.prototype.getSVGTarget = function () { return this.fEllipse; };
     JSEllipseView.prototype.toString = function () { return "JSEllipseView"; };
+    JSEllipseView.prototype.getScale = function (scale) { return scale; };
+    // getSyncRatio()	: number {  return 1; }
     JSEllipseView.prototype.updateSVGDimensions = function (w, h) {
         var rx = w / 2;
         var ry = h / 2;
@@ -831,7 +1052,7 @@ var faust = /** @class */ (function () {
             var audioCtx;
             return __generator(this, function (_a) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                Faust.compileAudioNode(audioCtx, this.fModule, "process=+;", null, 0).then((function (node) {
+                Faust.compileAudioNode(audioCtx, this.fModule, "process=+;", null, 0, 0).then((function (node) {
                     console.log("test function: " + node.setParamValue("/toto", 1));
                 }));
                 return [2 /*return*/];
@@ -842,6 +1063,9 @@ var faust = /** @class */ (function () {
 }());
 ///<reference path="JSSVGBase.ts"/>
 ///<reference path="faust.ts"/>
+///<reference path="AIOScanner.ts"/>
+///<reference path="AudioTools.ts"/>
+///<reference path="AudioObject.ts"/>
 var JSFaustView = /** @class */ (function (_super) {
     __extends(JSFaustView, _super);
     function JSFaustView(parent, compiler) {
@@ -849,25 +1073,25 @@ var JSFaustView = /** @class */ (function (_super) {
         _this.fAudioNode = null;
         _this.fVoices = 0;
         _this.fFaust = compiler;
-        if (!JSFaustView.fAudioContext) {
-            JSFaustView.fAudioContext = new (window.AudioContext || window.webkitAudioContext)();
-            _this.unlockAudioContext(JSFaustView.fAudioContext);
-        }
         _this.getElement().className = "inscore-svg";
         return _this;
     }
+    JSFaustView.prototype.toAudioObject = function () { return this; };
+    JSFaustView.prototype.getNumInputs = function () { return this.fAudioNode ? this.fAudioNode.getNumInputs() : 0; };
+    JSFaustView.prototype.getNumOutputs = function () { return this.fAudioNode ? this.fAudioNode.getNumOutputs() : 0; };
+    JSFaustView.prototype.getAudioNode = function () { return this.fAudioNode; };
     JSFaustView.prototype.clone = function (parent) { return new JSFaustView(parent, this.fFaust); };
     JSFaustView.prototype.toString = function () { return "JSFaustView"; };
     JSFaustView.prototype.osc2svgname = function (name) { return name.replace(/\//g, "_"); };
     JSFaustView.prototype.getSVGTarget = function () { return this.fSVG; };
     JSFaustView.prototype.updateSVGDimensions = function (w, h) { };
     JSFaustView.prototype.updatePenControl = function (pen) { this.updateRegularPen(pen); };
-    JSFaustView.prototype["delete"] = function () {
+    JSFaustView.prototype.delete = function () {
         if (this.fAudioNode) {
             this.fAudioNode.disconnect();
             this.fAudioNode = null;
         }
-        _super.prototype["delete"].call(this);
+        _super.prototype.delete.call(this);
     };
     JSFaustView.prototype.error = function (address, msg) {
         var imsg = inscore.newMessageM('set');
@@ -898,25 +1122,15 @@ var JSFaustView = /** @class */ (function (_super) {
         }
         return { svg: "", error: "While generating Faust svg diagram :" + svg.error() };
     };
-    JSFaustView.prototype.unlockclean = function () {
-        var _this = this;
-        JSFaustView.fUnlockEvents.forEach(function (e) { return document.body.removeEventListener(e, _this.unlock); });
-    };
-    JSFaustView.prototype.unlock = function () { JSFaustView.fAudioContext.resume().then(this.unlockclean); };
-    JSFaustView.prototype.unlockAudioContext = function (audioCtx) {
-        var _this = this;
-        if (audioCtx.state !== "suspended")
-            return;
-        JSFaustView.fUnlockEvents.forEach(function (e) { return document.body.addEventListener(e, _this.unlock, false); });
-    };
     JSFaustView.prototype.updateSpecific = function (obj) {
         var _this = this;
         if (this.fAudioNode) {
+            AudioTools.updateConnections(obj, this);
             var data = obj.getFaustInfos(true, false);
-            if (data.playing)
-                this.fAudioNode.connect(JSFaustView.fAudioContext.destination);
-            else
-                this.fAudioNode.disconnect();
+            // if (data.playing)
+            //     this.fAudioNode.connect (AIOScanner.fAudioContext.destination);
+            // else
+            //     this.fAudioNode.disconnect();
             var val = data.values;
             var n = val.size();
             var _loop_1 = function (i) {
@@ -947,65 +1161,154 @@ var JSFaustView = /** @class */ (function (_super) {
         }
         // else console.log ("Faust audio node is not available");
     };
-    JSFaustView.prototype.makeNode = function (oid, code, voices) {
+    JSFaustView.prototype.makeNode = function (obj, code, voices) {
         var _this = this;
+        // prevent building several objects in parallel
         if (JSFaustView.fCompilerLock) {
-            setTimeout(function () { _this.makeNode(oid, code, voices); }, 50);
+            setTimeout(function () { _this.makeNode(obj, code, voices); }, 50);
             return JSFaustView.kPending;
         }
         JSFaustView.fCompilerLock = true;
-        Faust.compileAudioNode(JSFaustView.fAudioContext, this.fFaust.module(), code, null, voices).then(function (node) {
+        Faust.compileAudioNode(AIOScanner.fAudioContext, this.fFaust.module(), code, null, voices, 0).then(function (node) {
             JSFaustView.fCompilerLock = false;
             if (_this.fAudioNode)
                 _this.fAudioNode.disconnect();
             _this.fAudioNode = node;
             _this.fVoices = voices;
-            var obj = INScore.objects().create(oid);
+            // let obj = INScore.objects().create(oid);
             if (!node) {
                 var address = obj.getOSCAddress();
                 _this.error(address, "Cannot compile " + address + ".");
                 return JSFaustView.kFailed;
             }
-            obj.setFaustInOut(node.getNumInputs(), node.getNumOutputs());
+            obj.setAudioInOut(node.getNumInputs(), node.getNumOutputs());
             var ui = node.getDescriptors();
             ui.forEach(function (elt) {
-                // console.log ("JSFaustView.makeNode elt " + elt.type + " " + elt.label + " " + elt.address + " " + elt.init + " " + elt.min + " " + elt.max + " " + elt.step );
-                if (elt.type == "button")
+                //  console.log ("JSFaustView.makeNode elt " + elt.type + " " + elt.label + " " + elt.address + " " + elt.init + " " + elt.min + " " + elt.max + " " + elt.step );
+                if ((elt.type == "button") || (elt.type == "checkbox"))
                     obj.setFaustUI(elt.type, elt.label, elt.address, 0, 0, 1, 1);
                 else
                     obj.setFaustUI(elt.type, elt.label, elt.address, elt.init, elt.min, elt.max, elt.step);
             });
             _this.updateSpecific(obj);
             var bb = _this.fSVG.getBBox();
-            _this.updateObjectSizeSync(obj, bb.width + bb.x, bb.height + bb.y);
+            _this.updateObjectSize(obj, bb.width + bb.x, bb.height + bb.y);
             obj.ready();
-            INScore.objects().del(obj);
+            // INScore.objects().del (obj);
+            return JSFaustView.kSuccess;
         });
         return JSFaustView.kSuccess;
     };
-    JSFaustView.prototype.updateSpecial = function (obj, oid) {
+    JSFaustView.prototype.getCode = function (code) {
+        return new Promise(function (resolve) {
+            resolve(code);
+        });
+    };
+    JSFaustView.prototype.updateSpecial = function (obj) {
+        var _this = this;
         if (!this.fFaust) {
             console.log("Faust engine is not available");
             return false;
         }
+        AIOScanner.scan(obj.getOSCAddress());
         var data = obj.getFaustInfos(false, true);
-        var diagram = this.dsp2Svg(data.code, this.osc2svgname(obj.getOSCAddress()));
-        if (diagram.error)
-            this.error(obj.getOSCAddress(), diagram.error);
-        else {
-            this.fSVG.innerHTML = diagram.svg;
-            this.makeNode(oid, data.code, data.voices);
-        }
-        return _super.prototype.updateSpecial.call(this, obj, oid);
+        this.getCode(data.code).then(function (code) {
+            if (code) {
+                var diagram = _this.dsp2Svg(code, _this.osc2svgname(obj.getOSCAddress()));
+                if (diagram.error)
+                    _this.error(obj.getOSCAddress(), diagram.error);
+                else {
+                    // success: display the svg diagram and build the audio node
+                    _this.fSVG.innerHTML = diagram.svg;
+                    _this.makeNode(obj, code, data.voices);
+                }
+                var ret = _super.prototype.updateSpecial.call(_this, obj /*, oid*/);
+                return ret;
+            }
+            else
+                return false;
+        });
+        return false;
     };
-    JSFaustView.fAudioContext = null;
-    JSFaustView.fUnlockEvents = ["touchstart", "touchend", "mousedown", "keydown"];
     JSFaustView.fCompilerLock = false;
     JSFaustView.kFailed = 0;
     JSFaustView.kSuccess = 1;
     JSFaustView.kPending = 2;
     return JSFaustView;
 }(JSSvgBase));
+var TFileLoader = /** @class */ (function () {
+    function TFileLoader() {
+    }
+    TFileLoader.getMusicXML = function (element) {
+        if (element.nodeName == "score-partwise") {
+            var content = '<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 3.1 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">\n';
+            var version = element.getAttributeNode('version');
+            content += version ? '<score-partwise version="' + version.textContent + '">' : '<score-partwise>';
+            content += element.innerHTML;
+            content += '</score-partwise>';
+            return content;
+        }
+        console.error("unsupported MusicXML type " + element.nodeName);
+        return null;
+    };
+    TFileLoader.getContent = function (obj) {
+        var doc = obj.contentDocument;
+        if (!doc)
+            return null;
+        var content = "";
+        var element = doc.documentElement;
+        switch (doc.contentType) {
+            case "text/plain":
+                content = element.innerText;
+                break;
+            case "text/html":
+                content = element.innerHTML;
+                break;
+            case "image/svg+xml":
+                content = element.innerHTML;
+                break;
+            case "text/xml":
+                content = TFileLoader.getMusicXML(element);
+                break;
+            default:
+                console.log("Unsupported content type " + doc.contentType);
+                content = null;
+        }
+        obj.parentElement.removeChild(obj);
+        return content;
+    };
+    TFileLoader.load = function (div, file) {
+        var obj = document.createElement('object');
+        obj.type = "text/plain";
+        obj.data = file;
+        obj.style.visibility = "hidden";
+        div.appendChild(obj);
+        return new Promise(function (resolve, failure) {
+            obj.addEventListener("error", function () { console.log("can't open file " + file); failure(null); });
+            obj.addEventListener("load", function () {
+                var content = TFileLoader.getContent(obj);
+                if (content)
+                    resolve(content);
+                else
+                    failure(null);
+            });
+        });
+    };
+    return TFileLoader;
+}());
+///<reference path="JSFaustView.ts"/>
+///<reference path="TFileLoader.ts"/>
+var JSFaustfView = /** @class */ (function (_super) {
+    __extends(JSFaustfView, _super);
+    function JSFaustfView() {
+        return _super !== null && _super.apply(this, arguments) || this;
+    }
+    JSFaustfView.prototype.toString = function () { return "JSFaustfView"; };
+    JSFaustfView.prototype.getCode = function (code) {
+        return TFileLoader.load(this.getElement(), code);
+    };
+    return JSFaustfView;
+}(JSFaustView));
 ///<reference path="libGUIDOEngine.d.ts"/>
 //----------------------------------------------------------------------------
 // GUIDOEngine interface
@@ -1293,7 +1596,7 @@ var JSGMNView = /** @class */ (function (_super) {
     JSGMNView.prototype.toString = function () { return "JSGMNView"; };
     JSGMNView.prototype.updateSVGDimensions = function (w, h) { };
     JSGMNView.prototype.guido = function () { return this.fGuido; };
-    JSGMNView.prototype["delete"] = function () {
+    JSGMNView.prototype.delete = function () {
         if (this.fGR) {
             this.fGuido.freeGR(this.fGR);
             this.fGuido.freeAR(this.fAR);
@@ -1302,13 +1605,14 @@ var JSGMNView = /** @class */ (function (_super) {
         }
         this.fGuido.closeParser(this.fParser);
         this.fParser = null;
-        _super.prototype["delete"].call(this);
+        _super.prototype.delete.call(this);
     };
     JSGMNView.prototype.updatePenControl = function (pen) { this.updateRegularPen(pen); };
     JSGMNView.prototype.parse = function (gmn) { return this.fGuido.string2AR(this.fParser, gmn); };
     JSGMNView.prototype.string2Ar = function (obj, gmn) { return this.parse(gmn); };
     // scaled to get a size similar to native app
     JSGMNView.prototype.parentScale = function () { return this.getParent().parentScale() * this.fScalingFactor; };
+    JSGMNView.prototype.getScale = function (scale) { return scale; };
     JSGMNView.prototype.gmn2svg = function (obj, gmn, page) {
         var ret = false;
         var ar = this.string2Ar(obj, gmn);
@@ -1318,7 +1622,7 @@ var JSGMNView = /** @class */ (function (_super) {
             this.fSVG.innerHTML = svg;
             var innerSvg = this.fSVG.getElementsByTagName('svg');
             this.fViewBox = this.scanViewBox(innerSvg[0].getAttribute('viewBox'));
-            this.updateObjectSizeSync(obj, this.fViewBox.width, this.fViewBox.height);
+            this.updateObjectSize(obj, this.fViewBox.width, this.fViewBox.height);
             obj.updateTime2TimeMap(this.fGuido.getTimeMap(ar));
             if (this.fGR) {
                 this.fGuido.freeGR(this.fGR);
@@ -1341,7 +1645,7 @@ var JSGMNView = /** @class */ (function (_super) {
         }
         return true;
     };
-    JSGMNView.prototype.updateSpecial = function (obj, oid) {
+    JSGMNView.prototype.updateSpecial = function (obj) {
         if (!this.checkGuido())
             return false;
         var guido = obj.getGuidoInfos();
@@ -1351,13 +1655,12 @@ var JSGMNView = /** @class */ (function (_super) {
     JSGMNView.getMapping = function (mapname, id, oid) {
         var view = JSObjectView.getObjectView(id);
         if (view) {
-            var obj = INScore.objects().create(oid);
+            var obj = INScore.objects().adapter(oid);
             var vb = view.viewBox();
             var w = vb.width;
             var h = vb.height;
             var map = view.getMap(mapname, w, h);
             obj.updateGraphic2TimeMap(mapname, map, w, h);
-            INScore.objects().del(obj);
         }
     };
     JSGMNView.prototype.getMap = function (mapname, width, height) {
@@ -1403,14 +1706,14 @@ var JSGMNStreamView = /** @class */ (function (_super) {
         return _this;
     }
     JSGMNStreamView.prototype.clone = function (parent) { return new JSGMNStreamView(parent, this.guido()); };
-    JSGMNStreamView.prototype["delete"] = function () {
+    JSGMNStreamView.prototype.delete = function () {
         this.guido().closeStream(this.fStream);
         this.fStream = null;
-        _super.prototype["delete"].call(this);
+        _super.prototype.delete.call(this);
     };
     JSGMNStreamView.prototype.toString = function () { return "JSGMNStreamView"; };
     JSGMNStreamView.prototype.string2Ar = function (obj, gmn) { return this.guido().stream2AR(this.fParser, this.fStream); };
-    JSGMNStreamView.prototype.updateSpecial = function (obj, oid) {
+    JSGMNStreamView.prototype.updateSpecial = function (obj) {
         if (!this.fStream)
             return false;
         var gmn = obj.getGuidoStream();
@@ -1418,72 +1721,11 @@ var JSGMNStreamView = /** @class */ (function (_super) {
             this.guido().resetStream(this.fStream);
         if (gmn.stream.length)
             this.guido().writeStream(this.fStream, gmn.stream);
-        return _super.prototype.updateSpecial.call(this, obj, oid);
+        return _super.prototype.updateSpecial.call(this, obj);
     };
     return JSGMNStreamView;
 }(JSGMNView));
-var TFileLoader = /** @class */ (function () {
-    function TFileLoader() {
-    }
-    TFileLoader.getMusicXML = function (element) {
-        if (element.nodeName == "score-partwise") {
-            var content = '<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 3.1 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">\n';
-            var version = element.getAttributeNode('version');
-            content += version ? '<score-partwise version="' + version.textContent + '">' : '<score-partwise>';
-            content += element.innerHTML;
-            content += '</score-partwise>';
-            return content;
-        }
-        console.error("unsupported MusicXML type " + element.nodeName);
-        return null;
-    };
-    TFileLoader.getContent = function (obj) {
-        var doc = obj.contentDocument;
-        if (!doc)
-            return null;
-        var content = "";
-        var element = doc.documentElement;
-        switch (doc.contentType) {
-            case "text/plain":
-                content = element.innerText;
-                break;
-            case "text/html":
-                content = element.innerHTML;
-                break;
-            case "image/svg+xml":
-                content = element.innerHTML;
-                break;
-            case "text/xml":
-                content = TFileLoader.getMusicXML(element);
-                break;
-            default:
-                console.log("Unsupported content type " + doc.contentType);
-                content = null;
-        }
-        obj.parentElement.removeChild(obj);
-        return content;
-    };
-    TFileLoader.load = function (div, file) {
-        var obj = document.createElement('object');
-        obj.type = "text/plain";
-        obj.data = file;
-        obj.style.visibility = "hidden";
-        div.appendChild(obj);
-        return new Promise(function (resolve, failure) {
-            obj.addEventListener("error", function () { console.log("can't open file " + file); failure(null); });
-            obj.addEventListener("load", function () {
-                var content = TFileLoader.getContent(obj);
-                if (content)
-                    resolve(content);
-                else
-                    failure(null);
-            });
-        });
-    };
-    return TFileLoader;
-}());
 ///<reference path="JSGMNView.ts"/>
-///<reference path="TASyncUpdate.ts"/>
 ///<reference path="TFileLoader.ts"/>
 var JSGMNfView = /** @class */ (function (_super) {
     __extends(JSGMNfView, _super);
@@ -1491,15 +1733,16 @@ var JSGMNfView = /** @class */ (function (_super) {
         return _super !== null && _super.apply(this, arguments) || this;
     }
     JSGMNfView.prototype.toString = function () { return "JSGMNfView"; };
-    JSGMNfView.prototype.updateSpecial = function (obj, oid) {
+    JSGMNfView.prototype.updateSpecial = function (obj) {
         var _this = this;
         if (!this.checkGuido())
             return false;
         var guido = obj.getGuidoInfos();
         TFileLoader.load(this.getElement(), obj.getFile()).then(function (text) {
             if (text) {
-                return TASyncUpdate.update(oid, function (obj) { return _this.gmn2svg(obj, text, guido.page); });
+                return _this.gmn2svg(obj, text, guido.page);
             }
+            return false;
         });
         return false;
     };
@@ -1570,7 +1813,7 @@ var JSHtmlView = /** @class */ (function (_super) {
         return this.updateSizeSync(obj);
     };
     JSHtmlView.prototype.getText = function (text) { return text; };
-    JSHtmlView.prototype.updateSpecial = function (obj, objid) {
+    JSHtmlView.prototype.updateSpecial = function (obj) {
         var infos = obj.getTextInfos();
         this.setHtml(obj, this.getText(infos.text));
         return true;
@@ -1579,19 +1822,20 @@ var JSHtmlView = /** @class */ (function (_super) {
 }(JSAutoSize));
 ///<reference path="JSHtmlView.ts"/>
 ///<reference path="TFileLoader.ts"/>
-///<reference path="TASyncUpdate.ts"/>
 var JSHtmlfView = /** @class */ (function (_super) {
     __extends(JSHtmlfView, _super);
     function JSHtmlfView() {
         return _super !== null && _super.apply(this, arguments) || this;
     }
     JSHtmlfView.prototype.toString = function () { return "JSHtmlfView"; };
-    JSHtmlfView.prototype.updateSpecial = function (obj, oid) {
+    JSHtmlfView.prototype.updateSpecial = function (obj) {
         var _this = this;
         TFileLoader.load(this.getElement(), obj.getFile()).then(function (text) {
             if (text) {
-                return TASyncUpdate.update(oid, function (obj) { _this.setHtml(obj, text); return true; });
+                return _this.setHtml(obj, text);
             }
+            else
+                return false;
         });
         return false;
     };
@@ -1609,8 +1853,8 @@ var JSImageView = /** @class */ (function (_super) {
         div.appendChild(img);
         _this = _super.call(this, div, parent) || this;
         _this.fImage = img;
-        _this.fScale = 1;
-        _this.getElement().className = "inscore-img";
+        _this.fImage.style.width = 100 + "%";
+        _this.fImage.style.height = 100 + "%";
         return _this;
     }
     JSImageView.prototype.clone = function (parent) {
@@ -1618,21 +1862,13 @@ var JSImageView = /** @class */ (function (_super) {
         img.fImage.src = this.fImage.src;
         return img;
     };
-    JSImageView.prototype.updateDimensions = function (pos) { }; // don't update image dimensions (use scale)
-    // image scale is relative to the parent, by default fill the parent element (scale 1) 
-    JSImageView.prototype.getScale = function (scale) {
-        var elt = this.getElement().parentElement;
-        var rw = this.fImage.clientWidth / elt.clientWidth;
-        var rh = this.fImage.clientHeight / elt.clientHeight;
-        this.fScale = scale / Math.max(rw, rh);
-        return this.fScale;
-    };
     JSImageView.prototype.toString = function () { return "JSImageView"; };
-    JSImageView.prototype.getSyncRatio = function () { return 1; }; // no scaling for images, appearance is already preserved 
-    JSImageView.prototype.getAutoSize = function () { return { x: this.fImage.clientWidth, y: this.fImage.clientHeight }; };
-    JSImageView.prototype.updateSpecial = function (obj, objid) {
+    // getSyncRatio()	: number    { return 1; }   // no scaling for images, appearance is already preserved 
+    JSImageView.prototype.getAutoSize = function () { return { x: this.fImage.naturalWidth, y: this.fImage.naturalHeight }; };
+    JSImageView.prototype.getScale = function (scale) { return scale; };
+    JSImageView.prototype.updateSpecial = function (obj) {
         this.fImage.src = obj.getFile();
-        return this.updateSizeASync(objid);
+        return this.updateSizeASync(obj);
     };
     JSImageView.prototype.setShadow = function (elt, val) {
         this.fImage.style.boxShadow = val.xOffset + "px " + val.yOffset + "px " + val.blur + "px " + val.color;
@@ -1670,7 +1906,7 @@ var JSLineView = /** @class */ (function (_super) {
         var div = this.getElement();
         return Math.max(Math.min(div.clientWidth, div.clientHeight) / Math.min(div.parentElement.clientWidth, div.parentElement.clientHeight), 0.022);
     };
-    JSLineView.prototype.updateSpecial = function (obj, objid) {
+    JSLineView.prototype.updateSpecial = function (obj) {
         var line = obj.getLineInfos();
         var x1 = this.relative2SceneWidth(line.x1);
         var y1 = this.relative2SceneHeight(line.y1);
@@ -1728,7 +1964,7 @@ var JSPianoRollView = /** @class */ (function (_super) {
         }
         return false;
     };
-    JSPianoRollView.prototype.updateSpecial = function (obj, oid) {
+    JSPianoRollView.prototype.updateSpecial = function (obj) {
         if (!this.checkGuido())
             return false;
         var proll = obj.getPianorollInfos();
@@ -1736,24 +1972,25 @@ var JSPianoRollView = /** @class */ (function (_super) {
     };
     return JSPianoRollView;
 }(JSGMNView));
-///<reference path="JSPianoRollView.ts"/>
+///<reference path="JSPianorollView.ts"/>
 ///<reference path="TFileLoader.ts"/>
-///<reference path="TASyncUpdate.ts"/>
 var JSPianoRollfView = /** @class */ (function (_super) {
     __extends(JSPianoRollfView, _super);
     function JSPianoRollfView() {
         return _super !== null && _super.apply(this, arguments) || this;
     }
     JSPianoRollfView.prototype.toString = function () { return "JSPianoRollfView"; };
-    JSPianoRollfView.prototype.updateSpecial = function (obj, oid) {
+    JSPianoRollfView.prototype.updateSpecial = function (obj) {
         var _this = this;
         if (!this.checkGuido())
             return false;
         var proll = obj.getPianorollInfos();
         TFileLoader.load(this.getElement(), obj.getFile()).then(function (text) {
             if (text) {
-                return TASyncUpdate.update(oid, function (obj) { return _this.proll2svg(obj, proll, text); });
+                return _this.proll2svg(obj, proll, text);
             }
+            else
+                return false;
         });
         return false;
     };
@@ -1773,7 +2010,7 @@ var JSPolygonView = /** @class */ (function (_super) {
     JSPolygonView.prototype.toString = function () { return "JSPolygonView"; };
     JSPolygonView.prototype.getSVGTarget = function () { return this.fPolygon; };
     JSPolygonView.prototype.updateSVGDimensions = function (w, h) { };
-    JSPolygonView.prototype.updateSpecial = function (obj, objid) {
+    JSPolygonView.prototype.updateSpecial = function (obj) {
         var points = obj.getPolygonInfos();
         var minx = 0x1fffffff;
         var miny = 0x1fffffff;
@@ -1810,6 +2047,8 @@ var JSRectView = /** @class */ (function (_super) {
         this.fRect.style.width = w + "px";
         this.fRect.style.height = h + "px";
     };
+    JSRectView.prototype.getScale = function (scale) { return scale; };
+    // getSyncRatio()	: number {  return 1; }
     JSRectView.prototype.updateSpecific = function (obj) {
         var radius = obj.getRadius();
         this.fRect.setAttribute('rx', radius.x.toString());
@@ -1829,8 +2068,8 @@ var JSSVGView = /** @class */ (function (_super) {
     JSSVGView.prototype.toString = function () { return "JSSVGView"; };
     JSSVGView.prototype.getSVGTarget = function () { return this.fSVG; };
     JSSVGView.prototype.updateSVGDimensions = function (w, h) {
-        if (!this.fSVG.viewBox.baseVal.width) {
-            // set viewBox here dimensions are incorrect at content setting 
+        if (!this.fSVG.viewBox.baseVal) {
+            // set viewBox dimensions 
             this.fSVG.setAttribute("viewBox", 0 + " " + 0 + " " + w + " " + h);
         }
     };
@@ -1838,30 +2077,31 @@ var JSSVGView = /** @class */ (function (_super) {
     JSSVGView.prototype.setSvg = function (obj, content) {
         this.fSVG.innerHTML = content;
         var bb = this.fSVG.getBBox();
-        this.updateObjectSizeSync(obj, bb.width + bb.x, bb.height + bb.y);
+        this.updateObjectSize(obj, bb.width + bb.x, bb.height + bb.y);
         obj.ready();
         return true;
     };
-    JSSVGView.prototype.updateSpecial = function (obj, oid) {
+    JSSVGView.prototype.updateSpecial = function (obj) {
         return this.setSvg(obj, obj.getSVGInfos());
     };
     return JSSVGView;
 }(JSSvgBase));
 ///<reference path="JSSVGView.ts"/>
 ///<reference path="TFileLoader.ts"/>
-///<reference path="TASyncUpdate.ts"/>
 var JSSVGfView = /** @class */ (function (_super) {
     __extends(JSSVGfView, _super);
     function JSSVGfView() {
         return _super !== null && _super.apply(this, arguments) || this;
     }
     JSSVGfView.prototype.toString = function () { return "JSSVGfView"; };
-    JSSVGfView.prototype.updateSpecial = function (obj, oid) {
+    JSSVGfView.prototype.updateSpecial = function (obj) {
         var _this = this;
         TFileLoader.load(this.getElement(), obj.getFile()).then(function (text) {
             if (text) {
-                return TASyncUpdate.update(oid, function (obj) { return _this.setSvg(obj, text); });
+                return _this.setSvg(obj, text);
             }
+            else
+                return false;
         });
         return false;
     };
@@ -1879,7 +2119,9 @@ var JSSceneView = /** @class */ (function (_super) {
         var absolute = style.position == "absolute";
         _this = _super.call(this, div, null, absolute) || this;
         _this.fAbsolutePos = absolute;
-        _this.updateObjectSize(objid, div.clientWidth, div.clientHeight);
+        var obj = INScore.objects().adapter(objid);
+        _this.updateObjectSize(obj, div.clientWidth, div.clientHeight);
+        // this.updateObjectSize (objid, div.clientWidth, div.clientHeight);
         // for a yet unknown reason, removing the next line result in incorrect
         // children positionning (like if position becomes relative to the window)
         div.style.filter = "blur(0px)";
@@ -1995,25 +2237,30 @@ var JSTextView = /** @class */ (function (_super) {
 }(JSHtmlView));
 ///<reference path="JSTextView.ts"/>
 ///<reference path="TFileLoader.ts"/>
-///<reference path="TASyncUpdate.ts"/>
 var JSTextfView = /** @class */ (function (_super) {
     __extends(JSTextfView, _super);
     function JSTextfView() {
         return _super !== null && _super.apply(this, arguments) || this;
     }
     JSTextfView.prototype.toString = function () { return "JSTextfView"; };
-    JSTextfView.prototype.updateSpecial = function (obj, oid) {
+    JSTextfView.prototype.updateSpecial = function (obj) {
         var _this = this;
         TFileLoader.load(this.getElement(), obj.getFile()).then(function (text) {
             if (text) {
-                return TASyncUpdate.update(oid, function (obj) { _this.setHtml(obj, _this.getText(text)); return true; });
+                return _this.setHtml(obj, _this.getText(text));
             }
+            else
+                return false;
         });
         return false;
     };
     return JSTextfView;
 }(JSTextView));
 ///<reference path="JSAutoSize.ts"/>
+///<reference path="TMedia.ts"/>
+///<reference path="AIOScanner.ts"/>
+///<reference path="AudioObject.ts"/>
+///<reference path="AudioTools.ts"/>
 var JSVideoView = /** @class */ (function (_super) {
     __extends(JSVideoView, _super);
     function JSVideoView(parent) {
@@ -2022,22 +2269,21 @@ var JSVideoView = /** @class */ (function (_super) {
         _this = _super.call(this, video, parent) || this;
         _this.fVideo = video;
         _this.fFile = "";
-        _this.getElement().className = "inscore-video";
         return _this;
     }
     JSVideoView.prototype.clone = function (parent) { return new JSVideoView(parent); };
-    JSVideoView.prototype.updateSpecial = function (obj, objid) {
+    JSVideoView.prototype.toString = function () { return "JSVideoView"; };
+    JSVideoView.prototype.updateSpecial = function (obj) {
+        AIOScanner.scan(obj.getOSCAddress());
+        this.addHandlers(this.fVideo, obj);
         this.fVideo.src = obj.getFile();
-        return this.updateSizeASync(objid);
+        return this.updateSizeASync(obj);
     };
     JSVideoView.prototype.setShadow = function (elt, val) {
         this.fVideo.style.filter = "drop-shadow(" + val.color + " " + val.xOffset + "px " + val.yOffset + "px " + val.blur + "px)";
     };
-    // setShadow (params: Array<number>): void {
-    // 	let color = new IColor( params.slice(2,6) );
-    // 	this.getHtml().style.filter = "drop-shadow(" + color.getCSSRGBAString() + " "+ params[0] +"px " + params[1] +"px " + params[6] +"px)";
-    // }
     JSVideoView.prototype.updateSpecific = function (obj) {
+        AudioTools.updateConnections(obj, this);
         var media = obj.getMediaInfos();
         if (media.playing)
             this.fVideo.play();
@@ -2048,11 +2294,9 @@ var JSVideoView = /** @class */ (function (_super) {
             this.fVideo.playbackRate = media.rate;
         if (media.mdate >= 0)
             this.fVideo.currentTime = media.mdate / 1000;
-        // video.fMLS       = this.fVideo.duration * 1000;
-        // video.fVDuration = this.fVideo.duration / this.fVideo.playbackRate;
     };
     return JSVideoView;
-}(JSAutoSize));
+}(TMedia));
 ///<reference path="libmusicxml.d.ts"/>
 //----------------------------------------------------------------------------
 // the libMusicXML interface
@@ -2113,7 +2357,7 @@ var JSXMLView = /** @class */ (function (_super) {
         var gmn = this.fXMLLib.string2guido(content, true);
         return gmn.length ? this.gmn2svg(obj, gmn, page) : false;
     };
-    JSXMLView.prototype.updateSpecial = function (obj, oid) {
+    JSXMLView.prototype.updateSpecial = function (obj) {
         if (this.checkxml()) {
             var xml = obj.getXMLInfos();
             return this.xml2gmn(obj, xml.code, xml.page);
@@ -2124,22 +2368,23 @@ var JSXMLView = /** @class */ (function (_super) {
 }(JSGMNView));
 ///<reference path="JSXMLView.ts"/>
 ///<reference path="TFileLoader.ts"/>
-///<reference path="TASyncUpdate.ts"/>
 var JSXMLfView = /** @class */ (function (_super) {
     __extends(JSXMLfView, _super);
     function JSXMLfView() {
         return _super !== null && _super.apply(this, arguments) || this;
     }
     JSXMLfView.prototype.toString = function () { return "JSXMLfView"; };
-    JSXMLfView.prototype.updateSpecial = function (obj, oid) {
+    JSXMLfView.prototype.updateSpecial = function (obj) {
         var _this = this;
         if (!this.checkxml())
             return false;
         var xml = obj.getXMLInfos();
         TFileLoader.load(this.getElement(), obj.getFile()).then(function (text) {
             if (text) {
-                return TASyncUpdate.update(oid, function (obj) { return _this.xml2gmn(obj, text, xml.page); });
+                return _this.xml2gmn(obj, text, xml.page);
             }
+            else
+                return false;
         });
         return false;
     };
@@ -2148,17 +2393,19 @@ var JSXMLfView = /** @class */ (function (_super) {
 ///<reference path="JSObjectView.ts"/>
 ///<reference path="interfaces.ts"/>
 var TMaster = /** @class */ (function () {
-    function TMaster(m, s) {
+    function TMaster(m, s, vstretch) {
         this.fMaster = m;
         this.fSlave = s;
         this.fClone = s.clone(m);
+        this.fVStretch = vstretch;
         m.getElement().appendChild(this.fClone.getElement());
     }
     TMaster.prototype.master = function () { return this.fMaster; };
     TMaster.prototype.slave = function () { return this.fClone; };
+    TMaster.prototype.scale = function () { return !this.fVStretch; };
     TMaster.prototype.unsync = function () {
         this.master().getElement().removeChild(this.fClone.getElement());
-        this.fClone["delete"]();
+        this.fClone.delete();
     };
     return TMaster;
 }());
@@ -2169,7 +2416,7 @@ var TSyncManager = /** @class */ (function () {
         this.fTarget = obj;
     }
     TSyncManager.prototype.toString = function () { return "TSyncManager"; };
-    TSyncManager.prototype.updateSync = function (obj, oid) {
+    TSyncManager.prototype.updateSync = function (obj) {
         var _this = this;
         var m = obj.getMasters();
         var n = m.size() + this.countMasters();
@@ -2188,7 +2435,7 @@ var TSyncManager = /** @class */ (function () {
         var updated = 0;
         this.fSync.forEach(function (m, index) {
             if (m) {
-                m.slave().updateView(obj, oid, m.master().getIObject(), false, true);
+                m.slave().updateView(obj, m.master().getIObject(), false, m.scale());
                 updated++;
             }
         });
@@ -2210,8 +2457,8 @@ var TSyncManager = /** @class */ (function () {
     TSyncManager.prototype.masters2Objects = function (vec) {
         var m = new Array();
         for (var i = 0; i < vec.size(); i++) {
-            var id = vec.get(i);
-            m[id] = JSObjectView.getVObject(id);
+            var master = vec.get(i);
+            m[master.viewid] = { view: JSObjectView.getVObject(master.viewid), vstretch: master.vstretch };
         }
         return m;
     };
@@ -2224,8 +2471,8 @@ var TSyncManager = /** @class */ (function () {
         return count;
     };
     TSyncManager.prototype.add = function (obj) {
-        var m = new TMaster(obj, this.fTarget);
-        this.fSync[obj.getId()] = m;
+        var m = new TMaster(obj.view, this.fTarget, obj.vstretch);
+        this.fSync[obj.view.getId()] = m;
     };
     TSyncManager.prototype.remove = function (index) {
         var master = this.fSync[index];
@@ -2345,9 +2592,11 @@ var inscorelibs = new libraries();
 ///<reference path="JSPianorollfView.ts"/>
 ///<reference path="JSLayerView.ts"/>
 ///<reference path="JSSVGfView.ts"/>
-///<reference path="JSAudioView.ts"/>
 ///<reference path="JSVideoView.ts"/>
+///<reference path="JSAudioView.ts"/>
+///<reference path="JSAudioioView.ts"/>
 ///<reference path="JSFaustView.ts"/>
+///<reference path="JSFaustfView.ts"/>
 ///<reference path="TSyncManager.ts"/>
 ///<reference path="libraries.ts"/>
 //----------------------------------------------------------------------------
@@ -2434,6 +2683,12 @@ var JSViewFactory = /** @class */ (function () {
             case "faust":
                 view = new JSFaustView(parent, inscorelibs.faust());
                 break;
+            case "faustf":
+                view = new JSFaustfView(parent, inscorelibs.faust());
+                break;
+            case "audioio":
+                view = new JSAudioioView(parent);
+                break;
             case "fileWatcher":
             case "graph":
             case "fastgraph":
@@ -2443,7 +2698,7 @@ var JSViewFactory = /** @class */ (function () {
             case "memimg":
             case "sig":
             case "signode":
-                console.log(type + "type is not yet supported");
+                console.log(type + ": type is not yet supported");
                 break;
             default:
                 console.error("JSViewFactory::create unknown type " + type);
@@ -2458,71 +2713,102 @@ var JSViewFactory = /** @class */ (function () {
 }());
 var inscorefactory = new JSViewFactory();
 ///<reference path="lib/libINScore.d.ts"/>
+///<reference path="inscore.ts"/>
+//-----------------------------------------------------------------------------------
 var TConnection = /** @class */ (function () {
     function TConnection(url) {
-        this.fSocket = null;
-        this.fEventSrc = null;
         this.fUrl = url;
-        this.connect(url);
     }
-    TConnection.prototype.connect = function (url) {
-        var _this = this;
-        this.fUrl = url;
-        this.fEventSrc = new EventSource(url);
-        this.fEventSrc.onmessage = function (event) { _this.processData(event); };
-        this.fEventSrc.onopen = function () { console.log("Connection to " + _this.fUrl + " established"); };
-        this.fEventSrc.onerror = function (error) { _this.error(); };
-        // this.fSocket = new WebSocket(url);
-        // this.fSocket.onopen = () => { console.log("Connection to " + this.fUrl + " established"); };
-        // this.fSocket.onmessage = (event) => { this.processData (event.data) };
-        // this.fSocket.onerror = (error: wserror) => { console.log (`[websocket error] ${error}`); };
-    };
-    TConnection.prototype.close = function () {
-        if (this.fEventSrc)
-            this.fEventSrc.close();
-        this.fEventSrc = null;
-        if (this.fSocket)
-            this.fSocket.close();
-        this.fSocket = null;
-    };
-    TConnection.prototype.error = function () {
-        var _this = this;
-        var delay = 5;
-        console.log("Connection to " + this.fUrl + " failed");
-        console.log("Retry to connect in " + delay + " seconds");
-        setTimeout(function () { if (_this.fEventSrc)
-            _this.connect(_this.fUrl); }, delay * 1000);
-    };
-    TConnection.prototype.state = function () {
-        if (this.fEventSrc)
-            return this.fEventSrc.readyState;
-        else if (this.fSocket)
-            return this.fSocket.readyState;
-        return 2;
-    };
-    TConnection.prototype.url = function () { return this.fUrl; };
+    TConnection.prototype.state = function () { return 2; };
+    Object.defineProperty(TConnection.prototype, "url", {
+        get: function () { return this.fUrl; },
+        enumerable: false,
+        configurable: true
+    });
     TConnection.prototype.processData = function (e) {
+        // console.log ("TConnection.processData")
+        // console.log (e.data)
         var data = atob(e.data);
         try {
             var json = JSON.parse(data);
             if (json['data'] && (json['method'] == "post")) {
-                console.log("inscore http: " + json['data']);
+                console.log("Remote msg from " + e.origin + ": " + json['data']);
                 inscore.loadInscore(json['data']);
             }
             else
-                console.log("Incorrect JSON message received from " + this.fUrl + ": " + json);
+                console.log("Incorrect JSON message received from " + e.origin + ": " + json);
         }
         catch (err) {
             if (e.data == "INScore")
                 console.log("Connected to INScore at " + this.fUrl);
             else {
-                console.log("Incorrect message received from " + this.fUrl + ": " + e.data);
+                console.log("Incorrect remote message received from " + e.origin + ": " + e.data);
                 console.log(err);
             }
         }
     };
     return TConnection;
 }());
+//-----------------------------------------------------------------------------------
+var THTTPConnection = /** @class */ (function (_super) {
+    __extends(THTTPConnection, _super);
+    function THTTPConnection(url) {
+        var _this = _super.call(this, url) || this;
+        _this.fEventSrc = null;
+        _this.connect(url);
+        return _this;
+    }
+    THTTPConnection.prototype.connect = function (url) {
+        var _this = this;
+        this.fEventSrc = new EventSource(url);
+        this.fEventSrc.onmessage = function (event) { _this.processData(event); };
+        this.fEventSrc.onopen = function () { console.log("Connection to " + _this.fUrl + " established"); };
+        this.fEventSrc.onerror = function (error) { console.log("Waiting for connection to " + _this.fUrl + " ..."); };
+    };
+    THTTPConnection.prototype.close = function () {
+        if (this.fEventSrc)
+            this.fEventSrc.close();
+        this.fEventSrc = null;
+    };
+    THTTPConnection.prototype.state = function () {
+        if (this.fEventSrc)
+            return this.fEventSrc.readyState;
+        return 2;
+    };
+    return THTTPConnection;
+}(TConnection));
+//-----------------------------------------------------------------------------------
+var TWSConnection = /** @class */ (function (_super) {
+    __extends(TWSConnection, _super);
+    function TWSConnection(url) {
+        var _this = _super.call(this, url) || this;
+        _this.fSocket = null;
+        _this.connect(url);
+        return _this;
+    }
+    TWSConnection.prototype.connect = function (url) {
+        var _this = this;
+        this.fSocket = new WebSocket(url);
+        this.fSocket.onopen = function () { console.log("Connection to " + _this.fUrl + " established"); };
+        this.fSocket.onmessage = function (event) { _this.processData(event); };
+        this.fSocket.onerror = function (error) { console.log("Waiting for connection to " + _this.fUrl + " ..."); };
+    };
+    TWSConnection.prototype.close = function () {
+        if (this.fSocket)
+            this.fSocket.close();
+        this.fSocket = null;
+    };
+    TWSConnection.prototype.state = function () {
+        if (this.fSocket)
+            return this.fSocket.readyState;
+        return 2;
+    };
+    return TWSConnection;
+}(TConnection));
+//-----------------------------------------------------------------------------------
+// handle connect calls from inscore
+// manages the list of connections
+//-----------------------------------------------------------------------------------
 var TConnections = /** @class */ (function () {
     function TConnections() {
     }
@@ -2531,19 +2817,33 @@ var TConnections = /** @class */ (function () {
             this.fCnx.forEach(function (elt) { elt.close(); });
             this.fCnx = [];
         }
-        if (cnx && cnx.length)
-            this.fCnx.push(new TConnection(cnx));
+        if (cnx && cnx.length) {
+            var proto = cnx.replace(/([a-z]+):\/\/..*/, "$1");
+            switch (proto) {
+                case "http":
+                case "https":
+                    this.fCnx.push(new THTTPConnection(cnx));
+                    break;
+                case "ws":
+                    this.fCnx.push(new TWSConnection(cnx));
+                    break;
+                default:
+                    console.log("Cannot connect to " + cnx + ": unknown protocol " + proto);
+                    return false;
+            }
+        }
         return true;
     };
     TConnections.state = function () {
         var out = new Array();
-        this.fCnx.forEach(function (elt) { out.push({ url: elt.url(), state: elt.state() }); });
+        this.fCnx.forEach(function (elt) { out.push({ url: elt.url, state: elt.state() }); });
         return out;
     };
     TConnections.fCnx = [];
     return TConnections;
 }());
 ///<reference path="lib/libINScore.d.ts"/>
+///<reference path="inscore.ts"/>
 var TJavascript = /** @class */ (function () {
     function TJavascript() {
     }
@@ -2570,6 +2870,7 @@ var TJavascript = /** @class */ (function () {
 ///<reference path="inscore.ts"/>
 ///<reference path="libraries.ts"/>
 ///<reference path="navigator.ts"/>
+///<reference path="AIOScanner.ts"/>
 //----------------------------------------------------------------------------
 var INScoreGlue = /** @class */ (function () {
     function INScoreGlue() {
@@ -2586,7 +2887,11 @@ var INScoreGlue = /** @class */ (function () {
                 return [2 /*return*/, new Promise(function (success, failure) {
                         _this.fInscore.initialise().then(function () {
                             _this.fInscore.start();
-                            inscorelibs.initialise().then(function () { _this.initialise(); success(_this); });
+                            inscorelibs.initialise().then(function () {
+                                AIOScanner.init();
+                                _this.initialise();
+                                success(_this);
+                            });
                         });
                     })];
             });

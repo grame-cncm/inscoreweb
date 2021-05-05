@@ -2,11 +2,11 @@
 /ITL/scene/* del;
 
 /ITL/scene/score set gmnf "/gmn/mozart.gmn.txt";
-/ITL/scene/score scale 0.25;
+/ITL/scene/score height 1.8;
 /ITL/scene/score watch mouseDown (/ITL/scene/cursor* date '$date:system');
 /ITL/scene/score watch mouseMove (/ITL/scene/cursor* date '$date:system');
 
-w = 0.1;
+w = 0.07;
 /ITL/scene/cursor1 set ellipse $w $w;
 /ITL/scene/cursor2 set ellipse $w $w;
 /ITL/scene/cursor3 set ellipse $w $w;
@@ -34,12 +34,12 @@ w = 0.1;
 
 play  = "/imgs/play.png";
 pause = "/imgs/pause.png";
-scale = 0.04;
-ascale = $scale * 1.1;
+alpha = 180;
 /ITL/scene/ctrl set img $play;
 /ITL/scene/ctrl show 0;
-/ITL/scene/ctrl scale $scale;
+/ITL/scene/ctrl width 0.08;
 /ITL/scene/ctrl y 0.9;
+/ITL/scene/ctrl alpha $alpha;
 /ITL/scene/ctrl show 1;
 /ITL/scene/ctrl watch mouseDown (
 	/ITL/scene/ctrl push,
@@ -52,8 +52,6 @@ ascale = $scale * 1.1;
 	)
 );
 
-g = 150;
-grey = $g $g $g;
-/ITL/scene/ctrl watch mouseEnter ( /ITL/scene/$self scale $ascale );
-/ITL/scene/ctrl watch mouseLeave ( /ITL/scene/$self scale $scale );
+/ITL/scene/ctrl watch mouseEnter ( /ITL/scene/$self alpha 255 );
+/ITL/scene/ctrl watch mouseLeave ( /ITL/scene/$self alpha $alpha );
 
