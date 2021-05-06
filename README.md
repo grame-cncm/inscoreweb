@@ -56,3 +56,5 @@ The editor supports several options that may be passed on the url:
 - ?code=&lt;b64code>  : loads the inscore code passed as argument of the code option. This code must be encoded in base 64.
 - ?src=&lt;url> : loads the inscore file indicated by the URL (note that you may face the [CORS](https://developer.mozilla.org/fr/docs/Web/HTTP/CORS) issue, but works with the embedded sample scripts)
 
+----
+[INScore](https://inscore.grame.fr/) is a project developed by [GRAME-CNCM](https://www.grame.fr) Computer Research Lab.

@@ -1,7 +1,0 @@
-INScore JS Editor History
-
-
-----------------------------------------------------------------
-version 1.0
-- first version of the INScore Web environment
-
