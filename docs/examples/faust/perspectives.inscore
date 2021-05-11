@@ -23,7 +23,6 @@ d8 = 46.2 / 4;
 rsrc = "https://inscoreweb.grame.fr/imgs/";
 pages = $rsrc + "bell/";
 audiorsrc = $rsrc + "bell/";
-#audiorsrc = "imgs/bell/";
 /ITL/scene/p1 set img $pages + '1.png';
 /ITL/scene/p2 set img $pages + '2.png';
 /ITL/scene/p3 set img $pages + '3.png';
@@ -226,7 +225,7 @@ yb = $yt * -1;
 /ITL/scene/layer/label1 y $yt;
 /ITL/scene/layer/label2 y $yb;
 
-/ITL/scene/layer x -0.9;
+/ITL/scene/layer x -0.8;
 /ITL/scene/layer y -0.63;
 /ITL/scene/layer show 0;
 
