@@ -1,0 +1,8 @@
+
+
+/ITL/scene/* del;
+/ITL/scene/title set txt "Faust libraries version";
+/ITL/scene/title scale 3;
+/ITL/scene/title y -0.6;
+
+/ITL/scene/echo set faust 'import("stdfaust.lib"); process =  vl.version;';
