@@ -207,10 +207,31 @@ var InscoreEditor = /** @class */ (function () {
         if (req.xml)
             libs += "<script src=\"" + gLibsHref + "/libmusicxml.js\"></script>\n";
         if (req.faust) {
-            libs += "<script src=\"" + gLibsHref + "/libfaust-wasm.js\"></script>\n";
+            // libs += "<script src=\"" + gLibsHref + "/libfaust-wasm.js\"></script>\n";
             libs += "<script src=\"" + gLibsHref + "/FaustLibrary.js\"></script>\n";
         }
         return libs;
+    };
+    InscoreEditor.prototype.formatScript = function (script) {
+        var regex = /^[  ]*([^  ]+)[    *]set[    *]faust[    *]([0-9]*)..*/;
+        var lines = script.split('\n');
+        var out = "";
+        var msg = new Array;
+        lines.forEach(function (element) {
+            var match = regex.exec(element);
+            if (match !== null) {
+                var address = match[1];
+                var n = match[1].lastIndexOf('/');
+                var name_1 = address.substr(n + 1);
+                out += address + " set faustw " + match[2] + " " + name_1 + ".wasm " + name_1 + ".json;\n";
+                // console.log ("post get wasm to " + address);
+                // inscore.postMessageStrStr(address, "get", "wasm");
+                msg.push(address);
+            }
+            else
+                out += element + "\n";
+        });
+        return { inscore: out.replace(/</g, "&lt;"), wasm: msg };
     };
     InscoreEditor.prototype.getHtml = function () {
         var script = this.fEditor.getValue();
@@ -219,9 +240,14 @@ var InscoreEditor = /** @class */ (function () {
         header += "	<title>INScoreWeb</title>\n";
         header += this.linkLibraries(script);
         header += "	<style>.inscore { background-color: white; width: 100%; height: 100%; }</style>\n";
-        header += "</head>\n<body>\n<div class=\"inscore\" id=\"scene\">\n";
-        var footer = "</div>\n</body>\n</html>";
-        return header + script.replace(/</g, "&lt;") + footer;
+        header += "</head>\n<body>\n<div class=\"inscore\" id=\"scene\">\n<pre>\n";
+        var footer = "</pre>\n</div>\n</body>\n</html>\n";
+        var content = this.formatScript(script);
+        content.wasm.forEach(function (address) {
+            console.log("post get wasm to " + address);
+            inscore.postMessageStrStr(address, "get", "wasm");
+        });
+        return header + content.inscore + footer;
     };
     InscoreEditor.prototype.setInscore = function (script, path) {
         if (path === void 0) { path = null; }
