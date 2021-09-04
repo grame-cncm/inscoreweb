@@ -118,11 +118,33 @@ class InscoreEditor {
 		if (req.xml)
 			libs += "<script src=\"" + gLibsHref + "/libmusicxml.js\"></script>\n";
 		if (req.faust) {
-			libs += "<script src=\"" + gLibsHref + "/libfaust-wasm.js\"></script>\n";
+			// libs += "<script src=\"" + gLibsHref + "/libfaust-wasm.js\"></script>\n";
 			libs += "<script src=\"" + gLibsHref + "/FaustLibrary.js\"></script>\n";
 		}
 		return libs;
 	}
+	
+	private formatScript( script: string) {
+		let regex = /^[  ]*([^  ]+)[    *]set[    *]faust[    *]([0-9]*)..*/;
+		let lines = script.split('\n');
+		let out = "";
+		let msg = new Array;
+		lines.forEach(element => {
+			let match = regex.exec(element);
+			if (match !== null) {
+				let address = match[1];
+				let n = match[1].lastIndexOf ('/');
+				let name = address.substr(n + 1);
+				out += address + " set faustw " + match[2] + " " + name + ".wasm " + name + ".json;\n";
+				// console.log ("post get wasm to " + address);
+				// inscore.postMessageStrStr(address, "get", "wasm");
+				msg.push (address);
+			}
+			else out += element + "\n";
+		});
+		return { inscore: out.replace(/</g, "&lt;"), wasm: msg };
+	}
+
 	getHtml () 	{
 			let script = this.fEditor.getValue();
 			let header = "<html>\n<head>\n";
@@ -130,9 +152,14 @@ class InscoreEditor {
 			header += "	<title>INScoreWeb</title>\n";
 			header += this.linkLibraries(script);
 			header += "	<style>.inscore { background-color: white; width: 100%; height: 100%; }</style>\n";
-			header += "</head>\n<body>\n<div class=\"inscore\" id=\"scene\">\n";
-			let footer = "</div>\n</body>\n</html>";
-			return header + script.replace(/</g, "&lt;") + footer;
+			header += "</head>\n<body>\n<div class=\"inscore\" id=\"scene\">\n<pre>\n";
+			let footer = "</pre>\n</div>\n</body>\n</html>\n";
+			let content = this.formatScript (script);
+			content.wasm.forEach(address => {
+				console.log ("post get wasm to " + address);
+				inscore.postMessageStrStr(address, "get", "wasm");
+			});
+			return header + content.inscore + footer;
 	}
 
 	setInscore ( script: string, path: string = null): void {
