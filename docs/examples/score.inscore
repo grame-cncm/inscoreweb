@@ -1,12 +1,13 @@
 
 /ITL/scene/* del;
 
-/ITL/scene/score set gmnf "/gmn/mozart.gmn.txt";
+#url = "https://inscoreweb.grame.fr/";
+url = "../";
+/ITL/scene/score set gmnf $url + "gmn/mozart.gmn.txt";
 /ITL/scene/score height 1.8;
 /ITL/scene/score watch mouseDown (/ITL/scene/cursor* date '$date:system');
-/ITL/scene/score watch mouseMove (/ITL/scene/cursor* date '$date:system');
 
-w = 0.07;
+w = 0.05;
 /ITL/scene/cursor1 set ellipse $w $w;
 /ITL/scene/cursor2 set ellipse $w $w;
 /ITL/scene/cursor3 set ellipse $w $w;
@@ -32,14 +33,13 @@ w = 0.07;
 /ITL/scene/sync cursor4 "score:staff4";
 /ITL/scene/sync cursor5 "score:staff5";
 
-play  = "/imgs/play.png";
-pause = "/imgs/pause.png";
-alpha = 180;
+play  = $url + "imgs/play.png";
+pause = $url + "imgs/pause.png";
+
 /ITL/scene/ctrl set img $play;
 /ITL/scene/ctrl show 0;
-/ITL/scene/ctrl width 0.08;
+/ITL/scene/ctrl scale 0.12;
 /ITL/scene/ctrl y 0.9;
-/ITL/scene/ctrl alpha $alpha;
 /ITL/scene/ctrl show 1;
 /ITL/scene/ctrl watch mouseDown (
 	/ITL/scene/ctrl push,
@@ -52,6 +52,29 @@ alpha = 180;
 	)
 );
 
-/ITL/scene/ctrl watch mouseEnter ( /ITL/scene/$self alpha 255 );
-/ITL/scene/ctrl watch mouseLeave ( /ITL/scene/$self alpha $alpha );
+g = 150;
+grey = $g $g $g;
+/ITL/scene/ctrl watch mouseEnter ( /ITL/scene/$self scale 0.13 );
+/ITL/scene/ctrl watch mouseLeave ( /ITL/scene/$self scale 0.12 );
 
+/ITL/scene watch keyDown " " ( /ITL/scene/ctrl event mouseDown 0 0 );
+/ITL/scene watch keyDown "0" ( /ITL/scene/cursor* date 0 );
+
+/ITL/scene watch keyDown ArrowLeft ( /ITL/scene/cursor* ddate -0.25 );
+/ITL/scene watch keyDown ArrowRight ( /ITL/scene/cursor* ddate 0.25 );
+/ITL/scene watch keyDown ArrowUp ( /ITL/scene/cursor* dtempo 2 );
+/ITL/scene watch keyDown ArrowDown ( /ITL/scene/cursor* dtempo -2 );
+
+
+__END__
+
+/ITL/scene/score get map;
+/ITL/scene/score/debug map 1;
+/ITL/scene/ctrl get watch;
+
+/ITL/scene/cursor date 0;
+/ITL/scene/cursor date 1 4;
+/ITL/scene/cursor date 9 4;
+/ITL/scene/cursor date 10 4;
+
+/ITL/scene/sync cursor;

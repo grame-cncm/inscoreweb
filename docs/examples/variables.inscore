@@ -23,7 +23,6 @@ url = "https://inscoreweb.grame.fr/";
 /ITL/scene/rep2  set  img $url + "imgs/repere.png";
 /ITL/scene/rep2  x  $x;
 /ITL/scene/rep2  y  $y;
-/ITL/scene/rep* scale 0.3;
 
 
 /ITL/scene/tpos  set  txt "Position ($x, $y): ";

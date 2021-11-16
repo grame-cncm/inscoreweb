@@ -20,7 +20,7 @@ d6 = 36.53 / 4;
 d7 = 41.5 / 4;
 d8 = 46.2 / 4;
 
-rsrc = "https://inscoreweb.grame.fr/imgs/";
+rsrc = "imgs/";
 pages = $rsrc + "bell/";
 audiorsrc = $rsrc + "bell/";
 /ITL/scene/p1 set img $pages + '1.png';
@@ -43,6 +43,7 @@ audiorsrc = $rsrc + "bell/";
 
 /ITL/scene/p* width 1.8;
 /ITL/scene/p* show 0;
+/ITL/scene/p* z 1;
 /ITL/scene/p1 show 1;
 click = (/ITL/scene/cursor date '$date', /ITL/scene/audio vdate '$date');
 /ITL/scene/p* watch mouseMove $click;
