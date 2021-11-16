@@ -133,7 +133,7 @@ freq4 = 546;
 /ITL/scene event RESET;
 
 /ITL/scene/cpstore watch mouseDown ( 
-	/ITL/log write run 'store($(/ITL/scene/cp?m get x y))',
+#	/ITL/log write run 'store($(/ITL/scene/cp?m/cp get x y))',
 	/ITL/scene/javascript run 'store($(/ITL/scene/cp1m/cp get x), $(/ITL/scene/cp1m/cp get y), $(/ITL/scene/cp2m/cp get x), $(/ITL/scene/cp2m/cp get y), $(/ITL/scene/cp3m/cp get x), $(/ITL/scene/cp3m/cp get y), $(/ITL/scene/cp4m/cp get x), $(/ITL/scene/cp4m/cp get y))'
 );
 

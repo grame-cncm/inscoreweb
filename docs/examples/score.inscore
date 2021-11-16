@@ -1,7 +1,6 @@
 
 /ITL/scene/* del;
 
-#url = "https://inscoreweb.grame.fr/";
 url = "../";
 /ITL/scene/score set gmnf $url + "gmn/mozart.gmn.txt";
 /ITL/scene/score height 1.8;
@@ -52,8 +51,6 @@ pause = $url + "imgs/pause.png";
 	)
 );
 
-g = 150;
-grey = $g $g $g;
 /ITL/scene/ctrl watch mouseEnter ( /ITL/scene/$self scale 0.13 );
 /ITL/scene/ctrl watch mouseLeave ( /ITL/scene/$self scale 0.12 );
 
@@ -66,15 +63,3 @@ grey = $g $g $g;
 /ITL/scene watch keyDown ArrowDown ( /ITL/scene/cursor* dtempo -2 );
 
 
-__END__
-
-/ITL/scene/score get map;
-/ITL/scene/score/debug map 1;
-/ITL/scene/ctrl get watch;
-
-/ITL/scene/cursor date 0;
-/ITL/scene/cursor date 1 4;
-/ITL/scene/cursor date 9 4;
-/ITL/scene/cursor date 10 4;
-
-/ITL/scene/sync cursor;
