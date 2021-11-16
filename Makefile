@@ -71,6 +71,8 @@ help:
 	@echo "  css          : generates minified version of css files"
 	@echo "  deplibs      : build an archive with all the dependent libraries named using sha"
 	@echo "  readme       : generates README.html from README.md"
+	@echo "========== Misc."
+	@echo "  update       : update package.json to the latest versions"
 
 
 ###########################################################################
@@ -87,7 +89,7 @@ deplibs:
 	cp -r node_modules/@grame/inscorejs/fonts $(TMPNAME)
 	$(MAKE) deparch FOLDER=$(TMPNAME)
 
-deparch: ARCHNAME = $(shell shasum $(FOLDER) | sed 's/ ..*//')
+deparch: ARCHNAME = $(shell tar -cf - $(FOLDER) | shasum | sed 's/ ..*//')
 deparch:
 	@echo Building archive $(ARCHNAME)
 	mv $(FOLDER) $(ARCHNAME)
@@ -133,6 +135,11 @@ README.html : README.md
 
 examples:
 	cd $(DIST) && node ../scripts/listEx.js
+
+###########################################################################
+update:
+	ncu -u
+	@echo "Run npm install to update your local modules"
 
 ###########################################################################
 clean:
