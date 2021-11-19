@@ -20,7 +20,7 @@ offset = 0.5;
 /ITL/scene/frag3 x  $offset;
 /ITL/scene/frag* y 0.65;
 /ITL/scene/frag* color grey;
-/ITL/scene/frag* scale 0.8;
+/ITL/scene/frag* width 0.4;
 
 /ITL/scene/frag* watch mouseEnter (/ITL/scene/$self color black );
 /ITL/scene/frag* watch mouseLeave (/ITL/scene/$self color grey );
