@@ -103,7 +103,7 @@ function downloadMedia(filename, data, type) {
     element.click();
     document.body.removeChild(element);
 }
-var gLibsHref = "https://berio.grame.fr/jslibs/da39a3ee5e6b4b0d3255bfef95601890afd80709";
+var gLibsHref = "https://berio.grame.fr/jslibs/447067e577dbdb36a6a0c825911574f9e1271182";
 ///<reference types="@grame/inscorejs"/>
 ///<reference path="download.ts"/>
 ///<reference path="href.ts"/>
@@ -2277,8 +2277,17 @@ function load(name, path) {
         return r;
     }
     // Add a span to a line.
-    function addMarkedSpan(line, span) {
-        line.markedSpans = line.markedSpans ? line.markedSpans.concat([span]) : [span];
+    function addMarkedSpan(line, span, op) {
+        var inThisOp = op && window.WeakSet && (op.markedSpans || (op.markedSpans = new WeakSet));
+        if (inThisOp && inThisOp.has(line.markedSpans)) {
+            line.markedSpans.push(span);
+        }
+        else {
+            line.markedSpans = line.markedSpans ? line.markedSpans.concat([span]) : [span];
+            if (inThisOp) {
+                inThisOp.add(line.markedSpans);
+            }
+        }
         span.marker.attachLine(line);
     }
     // Used for the algorithm that adjusts markers for a change in the
@@ -4432,6 +4441,12 @@ function load(name, path) {
         cursor.style.left = pos.left + "px";
         cursor.style.top = pos.top + "px";
         cursor.style.height = Math.max(0, pos.bottom - pos.top) * cm.options.cursorHeight + "px";
+        if (/\bcm-fat-cursor\b/.test(cm.getWrapperElement().className)) {
+            var charPos = charCoords(cm, head, "div", null, null);
+            if (charPos.right - charPos.left > 0) {
+                cursor.style.width = (charPos.right - charPos.left) + "px";
+            }
+        }
         if (pos.other) {
             // Secondary cursor, shown when on a 'jump' in bi-directional text
             var otherCursor = output.appendChild(elt("div", "\u00a0", "CodeMirror-cursor CodeMirror-secondarycursor"));
@@ -4626,12 +4641,16 @@ function load(name, path) {
     function updateHeightsInViewport(cm) {
         var display = cm.display;
         var prevBottom = display.lineDiv.offsetTop;
+        var viewTop = Math.max(0, display.scroller.getBoundingClientRect().top);
+        var oldHeight = display.lineDiv.getBoundingClientRect().top;
+        var mustScroll = 0;
         for (var i = 0; i < display.view.length; i++) {
             var cur = display.view[i], wrapping = cm.options.lineWrapping;
             var height = (void 0), width = 0;
             if (cur.hidden) {
                 continue;
             }
+            oldHeight += cur.line.height;
             if (ie && ie_version < 8) {
                 var bot = cur.node.offsetTop + cur.node.offsetHeight;
                 height = bot - prevBottom;
@@ -4648,6 +4667,9 @@ function load(name, path) {
             }
             var diff = cur.line.height - height;
             if (diff > .005 || diff < -.005) {
+                if (oldHeight < viewTop) {
+                    mustScroll -= diff;
+                }
                 updateLineHeight(cur.line, height);
                 updateWidgetHeight(cur.line);
                 if (cur.rest) {
@@ -4664,6 +4686,9 @@ function load(name, path) {
                     cm.display.maxLineChanged = true;
                 }
             }
+        }
+        if (Math.abs(mustScroll) > 2) {
+            display.scroller.scrollTop += mustScroll;
         }
     }
     // Read and store the height of line widgets associated with the
@@ -4734,8 +4759,8 @@ function load(name, path) {
             // Set pos and end to the cursor positions around the character pos sticks to
             // If pos.sticky == "before", that is around pos.ch - 1, otherwise around pos.ch
             // If pos == Pos(_, 0, "before"), pos and end are unchanged
-            pos = pos.ch ? Pos(pos.line, pos.sticky == "before" ? pos.ch - 1 : pos.ch, "after") : pos;
             end = pos.sticky == "before" ? Pos(pos.line, pos.ch + 1, "before") : pos;
+            pos = pos.ch ? Pos(pos.line, pos.sticky == "before" ? pos.ch - 1 : pos.ch, "after") : pos;
         }
         for (var limit = 0; limit < 5; limit++) {
             var changed = false;
@@ -5133,7 +5158,8 @@ function load(name, path) {
             scrollLeft: null, scrollTop: null,
             scrollToPos: null,
             focus: false,
-            id: ++nextOpId // Unique ID
+            id: ++nextOpId,
+            markArrays: null // Used by addMarkedSpan
         };
         pushOperation(cm.curOp);
     }
@@ -5806,6 +5832,9 @@ function load(name, path) {
         d.scroller.setAttribute("tabIndex", "-1");
         // The element in which the editor lives.
         d.wrapper = elt("div", [d.scrollbarFiller, d.gutterFiller, d.scroller], "CodeMirror");
+        // This attribute is respected by automatic translation systems such as Google Translate,
+        // and may also be respected by tools used by human translators.
+        d.wrapper.setAttribute('translate', 'no');
         // Work around IE7 z-index bug (not perfect, hence IE7 not really being supported)
         if (ie && ie_version < 8) {
             d.gutters.style.zIndex = -1;
@@ -5910,6 +5939,12 @@ function load(name, path) {
     }
     function onScrollWheel(cm, e) {
         var delta = wheelEventDelta(e), dx = delta.x, dy = delta.y;
+        var pixelsPerUnit = wheelPixelsPerUnit;
+        if (e.deltaMode === 0) {
+            dx = e.deltaX;
+            dy = e.deltaY;
+            pixelsPerUnit = 1;
+        }
         var display = cm.display, scroll = display.scroller;
         // Quit if there's nothing to scroll here
         var canScrollX = scroll.scrollWidth > scroll.clientWidth;
@@ -5937,11 +5972,11 @@ function load(name, path) {
         // estimated pixels/delta value, we just handle horizontal
         // scrolling entirely here. It'll be slightly off from native, but
         // better than glitching out.
-        if (dx && !gecko && !presto && wheelPixelsPerUnit != null) {
+        if (dx && !gecko && !presto && pixelsPerUnit != null) {
             if (dy && canScrollY) {
-                updateScrollTop(cm, Math.max(0, scroll.scrollTop + dy * wheelPixelsPerUnit));
+                updateScrollTop(cm, Math.max(0, scroll.scrollTop + dy * pixelsPerUnit));
             }
-            setScrollLeft(cm, Math.max(0, scroll.scrollLeft + dx * wheelPixelsPerUnit));
+            setScrollLeft(cm, Math.max(0, scroll.scrollLeft + dx * pixelsPerUnit));
             // Only prevent default scrolling if vertical scrolling is
             // actually possible. Otherwise, it causes vertical scroll
             // jitter on OSX trackpads when deltaX is small and deltaY
@@ -5954,8 +5989,8 @@ function load(name, path) {
         }
         // 'Project' the visible viewport to cover the area that is being
         // scrolled into view (if we know enough to estimate it).
-        if (dy && wheelPixelsPerUnit != null) {
-            var pixels = dy * wheelPixelsPerUnit;
+        if (dy && pixelsPerUnit != null) {
+            var pixels = dy * pixelsPerUnit;
             var top = cm.doc.scrollTop, bot = top + display.wrapper.clientHeight;
             if (pixels < 0) {
                 top = Math.max(0, top + pixels - 50);
@@ -5965,7 +6000,7 @@ function load(name, path) {
             }
             updateDisplaySimple(cm, { top: top, bottom: bot });
         }
-        if (wheelSamples < 20) {
+        if (wheelSamples < 20 && e.deltaMode !== 0) {
             if (display.wheelStartX == null) {
                 display.wheelStartX = scroll.scrollLeft;
                 display.wheelStartY = scroll.scrollTop;
@@ -6256,6 +6291,7 @@ function load(name, path) {
         estimateLineHeights(cm);
         loadMode(cm);
         setDirectionClass(cm);
+        cm.options.direction = doc.direction;
         if (!cm.options.lineWrapping) {
             findMaxLine(cm);
         }
@@ -7572,7 +7608,7 @@ function load(name, path) {
             if (marker.collapsed && curLine != from.line) {
                 updateLineHeight(line, 0);
             }
-            addMarkedSpan(line, new MarkedSpan(marker, curLine == from.line ? from.ch : null, curLine == to.line ? to.ch : null));
+            addMarkedSpan(line, new MarkedSpan(marker, curLine == from.line ? from.ch : null, curLine == to.line ? to.ch : null), doc.cm && doc.cm.curOp);
             ++curLine;
         });
         // lineIsHidden depends on the presence of the spans, so needs a second pass
@@ -7768,6 +7804,9 @@ function load(name, path) {
             var lines = getBetween(this, clipPos(this, from), clipPos(this, to));
             if (lineSep === false) {
                 return lines;
+            }
+            if (lineSep === '') {
+                return lines.join('');
             }
             return lines.join(lineSep || this.lineSeparator());
         },
@@ -10199,7 +10238,7 @@ function load(name, path) {
         field.setAttribute("spellcheck", !!spellcheck);
     }
     function hiddenTextarea() {
-        var te = elt("textarea", null, null, "position: absolute; bottom: -1em; padding: 0; width: 1px; height: 1em; outline: none");
+        var te = elt("textarea", null, null, "position: absolute; bottom: -1em; padding: 0; width: 1px; height: 1em; min-height: 1em; outline: none");
         var div = elt("div", [te], null, "overflow: hidden; position: relative; width: 3px; height: 0px;");
         // The textarea is kept positioned near the cursor to prevent the
         // fact that it'll be scrolled into view on input from scrolling
@@ -11081,9 +11120,10 @@ function load(name, path) {
     ContentEditableInput.prototype.getField = function () { return this.div; };
     ContentEditableInput.prototype.supportsTouch = function () { return true; };
     ContentEditableInput.prototype.receivedFocus = function () {
+        var this$1 = this;
         var input = this;
         if (this.selectionInEditor()) {
-            this.pollSelection();
+            setTimeout(function () { return this$1.pollSelection(); }, 20);
         }
         else {
             runInOp(this.cm, function () { return input.cm.curOp.selectionChanged = true; });
@@ -11989,7 +12029,7 @@ function load(name, path) {
     };
     CodeMirror.fromTextArea = fromTextArea;
     addLegacyProps(CodeMirror);
-    CodeMirror.version = "5.61.0";
+    CodeMirror.version = "5.63.3";
     return CodeMirror;
 })));
 // CodeMirror, copyright (c) by Marijn Haverbeke and others
@@ -12004,13 +12044,13 @@ function load(name, path) {
         mod(CodeMirror);
 })(function (CodeMirror) {
     "use strict";
-    var keywords = ["absolutexy", "accept", "alias", "alpha", "angle", "animate", "animated", "arrows", "autoscale", "autoVoicesColoration", "blue", "brightness", "browse", "brushStyle", "calibrate", "cancel", "clear", "clipPitch", "clipTime", "clock", "close", "color", "columns", "compatibility", "connect", "count", "dalpha", "dangle", "date", "dblue", "dbrightness", "dcolor", "ddate", "dduration", "debug", "default", "defaultShow", "del", "dgreen", "dhsb", "dhue", "dimension", "disconnect", "dpage", "drange", "dred", "drotatex", "drotatey", "drotatez", "dsaturation", "dscale", "dshear", "dstart", "dtempo", "duration", "durClock", "dx", "dxorigin", "dy", "dyorigin", "dz", "edit", "effect", "end", "error", "errport", "eval", "event", "export", "exportAll", "expr", "follow", "fontFamily", "fontSize", "fontStyle", "fontWeight", "foreground", "forward", "frame", "frameless", "fullscreen", "get", "green", "guido-version", "hasZ", "height", "hello", "hsb", "hue", "in", "keyboard", "learn", "level", "likelihoodthreshold", "likelihoodwindow", "load", "lock", "map+", "map", "mapf", "max", "measureBars", "mls", "mode", "mouse", "musicxml-version", "name", "new", "opengl", "order", "osc", "out", "outport", "page", "pageCount", "pageFormat", "path", "penAlpha", "penColor", "pendAlpha", "penStyle", "penWidth", "pitchLines", "play", "pop", "port", "preprocess", "push", "quit", "radius", "range", "rate", "rcount", "read", "red", "reject", "require", "reset", "resetBench", "rootPath", "rotatex", "rotatey", "rotatez", "rows", "run", "saturation", "save", "scale", "set", "shear", "show", "size", "smooth", "stack", "start", "status", "stop", "success", "systemCount", "tempo", "ticks", "time", "tolerance", "vdate", "vduration", "version", "videoMap", "videoMapf", "voiceColor", "volume", "watch+", "watch", "width", "windowOpacity", "wrap", "write", "writeBench", "x", "xborder", "xorigin", "y", "yborder", "yorigin", "z"];
+    var keywords = ["absolutexy", "accept", "alias", "alpha", "angle", "animate", "animated", "arrows", "autoscale", "autoVoicesColoration", "blue", "brightness", "browse", "brushStyle", "calibrate", "cancel", "clear", "clipPitch", "clipTime", "clock", "close", "color", "columns", "compatibility", "connect", "count", "dalpha", "dangle", "date", "dblue", "dbrightness", "dcolor", "ddate", "dduration", "debug", "default", "defaultShow", "del", "dgreen", "dhsb", "dhue", "dimension", "disconnect", "dpage", "drange", "dred", "drotatex", "drotatey", "drotatez", "dsaturation", "dscale", "dshear", "dstart", "dtempo", "duration", "durClock", "dx", "dxorigin", "dy", "dyorigin", "dz", "edit", "effect", "end", "error", "errport", "eval", "event", "export", "exportAll", "expr", "follow", "fontFamily", "fontSize", "fontStyle", "fontWeight", "foreground", "forward", "frame", "frameless", "fullscreen", "get", "green", "guido-version", "hasZ", "height", "hello", "hsb", "hue", "in", "keyboard", "learn", "level", "likelihoodthreshold", "likelihoodwindow", "load", "lock", "map+", "map", "mapf", "max", "measureBars", "mls", "mode", "mouseDown", "mouseUp", "mouseEnter", "mouseLeave", "keyDown", "keyUp", "musicxml-version", "name", "new", "opengl", "order", "osc", "out", "outport", "page", "pageCount", "pageFormat", "path", "penAlpha", "penColor", "pendAlpha", "penStyle", "penWidth", "pitchLines", "play", "pop", "port", "preprocess", "push", "quit", "radius", "range", "rate", "rcount", "read", "red", "reject", "require", "reset", "resetBench", "rootPath", "rotatex", "rotatey", "rotatez", "rows", "run", "saturation", "save", "scale", "set", "shear", "show", "size", "smooth", "stack", "start", "status", "stop", "success", "systemCount", "tempo", "ticks", "time", "tolerance", "vdate", "vduration", "version", "videoMap", "videoMapf", "voiceColor", "volume", "watch+", "watch", "width", "windowOpacity", "wrap", "write", "writeBench", "x", "xborder", "xorigin", "y", "yborder", "yorigin", "z"];
     CodeMirror.registerHelper("hint", "inscore", keywords);
     CodeMirror.defineMode("inscore", function () {
         var addr_regex = /\/ITL[-_a-zA-Z0-9\/\[\]{}*]*/;
         var var_regex = /\$[a-zA-Z0-9\/]*/;
         var msg_var_regex = /\$([^)]*)/;
-        var methods_regex = /autoVoicesColoration|likelihoodthreshold|likelihoodwindow|musicxml-version|compatibility|guido-version|windowOpacity|dbrightness|defaultShow|dsaturation|measureBars|systemCount|absolutexy|brightness|brushStyle|disconnect|fontFamily|fontWeight|foreground|fullscreen|pageFormat|pitchLines|preprocess|resetBench|saturation|voiceColor|writeBench|autoscale|calibrate|clipPitch|dduration|dimension|exportAll|fontStyle|frameless|pageCount|pendAlpha|tolerance|vduration|videoMapf|animated|clipTime|drotatex|drotatey|drotatez|duration|durClock|dxorigin|dyorigin|fontSize|keyboard|penAlpha|penColor|penStyle|penWidth|rootPath|videoMap|animate|columns|connect|default|errport|forward|outport|require|rotatex|rotatey|rotatez|success|version|xborder|xorigin|yborder|yorigin|accept|arrows|browse|cancel|dalpha|dangle|dcolor|dgreen|drange|dscale|dshear|dstart|dtempo|effect|export|follow|height|opengl|radius|rcount|reject|smooth|status|volume|watch+|alias|alpha|angle|clear|clock|close|color|count|dblue|ddate|debug|dpage|error|event|frame|green|hello|learn|level|mouse|order|range|reset|scale|shear|stack|start|tempo|ticks|vdate|watch|width|write|blue|date|dhsb|dhue|dred|edit|eval|expr|hasZ|load|lock|map+|mapf|mode|name|page|path|play|port|push|quit|rate|read|rows|save|show|size|stop|time|wrap|del|end|get|hsb|hue|map|max|mls|new|osc|out|pop|red|run|set|dx|dy|dz|in|x|y|z/;
+        var methods_regex = /autoVoicesColoration|likelihoodthreshold|likelihoodwindow|musicxml-version|compatibility|guido-version|windowOpacity|dbrightness|defaultShow|dsaturation|measureBars|systemCount|absolutexy|brightness|brushStyle|disconnect|fontFamily|fontWeight|foreground|fullscreen|pageFormat|pitchLines|preprocess|resetBench|saturation|voiceColor|writeBench|autoscale|calibrate|clipPitch|dduration|dimension|exportAll|fontStyle|frameless|pageCount|pendAlpha|tolerance|vduration|videoMapf|animated|clipTime|drotatex|drotatey|drotatez|duration|durClock|dxorigin|dyorigin|fontSize|keyboard|penAlpha|penColor|penStyle|penWidth|rootPath|videoMap|animate|columns|connect|default|errport|forward|outport|require|rotatex|rotatey|rotatez|success|version|xborder|xorigin|yborder|yorigin|accept|arrows|browse|cancel|dalpha|dangle|dcolor|dgreen|drange|dscale|dshear|dstart|dtempo|effect|export|follow|height|opengl|radius|rcount|reject|smooth|status|volume|watch+|alias|alpha|angle|clear|clock|close|color|count|dblue|ddate|debug|dpage|error|event|frame|green|hello|level|mouseEnter|mouseLeave|mouseDown|mouseUp|mouse|keyDown|keyUp|order|range|reset|scale|shear|stack|start|tempo|ticks|vdate|watch|width|write|blue|date|dhsb|dhue|dred|edit|eval|expr|hasZ|load|lock|map+|mapf|mode|name|page|path|play|port|push|quit|rate|read|rows|save|show|size|stop|time|wrap|del|end|get|hsb|hue|map|max|mls|new|osc|out|pop|red|run|set|dx|dy|dz|in|x|y|z/;
         var def_regex = /[a-zA-Z]+[ \t]*=..*;/;
         var num_regex = /-{0,1}[0-9]+\.{0,1}[0-9]*/;
         function tokenize(stream, state) {

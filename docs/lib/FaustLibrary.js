@@ -362,6 +362,7 @@ var Faust;
             this.fPitchwheelLabel = [];
             this.fCtrlLabel = new Array(128).fill(null).map(() => []);
             this.fPathTable = {};
+            this.fProcessing = false;
             this.fDestroyed = false;
             this.fUICallback = (item) => {
                 if (item.type === "hbargraph" || item.type === "vbargraph") {
@@ -492,6 +493,12 @@ var Faust;
         getJSON() { return ""; }
         getUI() { return this.fJSONDsp.ui; }
         getDescriptors() { return this.fDescriptor; }
+        start() {
+            this.fProcessing = true;
+        }
+        stop() {
+            this.fProcessing = false;
+        }
         destroy() {
             this.fDestroyed = true;
             this.fOutputHandler = null;
@@ -554,6 +561,8 @@ var Faust;
         compute(input, output) {
             if (this.fDestroyed)
                 return false;
+            if (!this.fProcessing)
+                return true;
             if (this.getNumInputs() > 0 && (!input || !input[0] || input[0].length === 0)) {
                 return true;
             }
@@ -607,15 +616,15 @@ var Faust;
             DspVoice.kActiveVoice = 0;
             DspVoice.kFreeVoice = -1;
             DspVoice.kReleaseVoice = -2;
-            DspVoice.kNoVoice = -3;
+            DspVoice.kLegatoVoice = -3;
+            DspVoice.kNoVoice = -4;
             DspVoice.VOICE_STOP_LEVEL = 0.0005;
             this.fKeyFun = (pitch) => { return DspVoice.midiToFreq(pitch); };
             this.fVelFun = (velocity) => { return velocity / 127.0; };
+            this.fCurNote = DspVoice.kFreeVoice;
+            this.fNextNote = this.fNextVel = -1;
             this.fLevel = 0;
-            this.fRelease = 0;
-            this.fMaxRelease = sample_rate / 2;
-            this.fNote = DspVoice.kFreeVoice;
-            this.fDate = 0;
+            this.fDate = this.fRelease = 0;
             this.fDSP = dsp;
             this.fAPI = api;
             this.fGateLabel = [];
@@ -648,22 +657,34 @@ var Faust;
                 }
             });
         }
-        keyOn(pitch, velocity) {
-            this.fAPI.instanceClear(this.fDSP);
-            this.fFreqLabel.forEach(index => this.fAPI.setParamValue(this.fDSP, index, this.fKeyFun(pitch)));
-            this.fGateLabel.forEach(index => this.fAPI.setParamValue(this.fDSP, index, 1));
-            this.fGainLabel.forEach(index => this.fAPI.setParamValue(this.fDSP, index, this.fVelFun(velocity)));
-            this.fNote = pitch;
+        keyOn(pitch, velocity, legato = false) {
+            if (legato) {
+                this.fNextNote = pitch;
+                this.fNextVel = velocity;
+            }
+            else {
+                this.fFreqLabel.forEach(index => this.fAPI.setParamValue(this.fDSP, index, this.fKeyFun(pitch)));
+                this.fGateLabel.forEach(index => this.fAPI.setParamValue(this.fDSP, index, 1));
+                this.fGainLabel.forEach(index => this.fAPI.setParamValue(this.fDSP, index, this.fVelFun(velocity)));
+                this.fCurNote = pitch;
+            }
         }
         keyOff(hard = false) {
             this.fGateLabel.forEach(index => this.fAPI.setParamValue(this.fDSP, index, 0));
             if (hard) {
-                this.fNote = DspVoice.kFreeVoice;
+                this.fCurNote = DspVoice.kFreeVoice;
             }
             else {
-                this.fRelease = this.fMaxRelease;
-                this.fNote = DspVoice.kReleaseVoice;
+                this.fRelease = this.fAPI.getSampleRate(this.fDSP) / 2;
+                this.fCurNote = DspVoice.kReleaseVoice;
             }
+        }
+        computeLegato(buffer_size, inputs, output_zero, outputs_half) {
+            let size = buffer_size / 2;
+            this.fGateLabel.forEach(index => this.fAPI.setParamValue(this.fDSP, index, 0));
+            this.fAPI.compute(this.fDSP, size, inputs, output_zero);
+            this.keyOn(this.fNextNote, this.fNextVel);
+            this.fAPI.compute(this.fDSP, size, inputs, outputs_half);
         }
         compute(buffer_size, inputs, outputs) {
             this.fAPI.compute(this.fDSP, buffer_size, inputs, outputs);
@@ -703,7 +724,8 @@ var Faust;
             this.fAudioInputs = audio_ptr;
             this.fAudioOutputs = this.fAudioInputs + this.getNumInputs() * this.gPtrSize;
             this.fAudioMixing = this.fAudioOutputs + this.getNumOutputs() * this.gPtrSize;
-            const audio_inputs_ptr = this.fAudioMixing + this.getNumOutputs() * this.gPtrSize;
+            this.fAudioMixingHalf = this.fAudioMixing + this.getNumOutputs() * this.gPtrSize;
+            const audio_inputs_ptr = this.fAudioMixingHalf + this.getNumOutputs() * this.gPtrSize;
             const audio_outputs_ptr = audio_inputs_ptr + this.getNumInputs() * this.fBufferSize * this.gSampleSize;
             const audio_mixing_ptr = audio_outputs_ptr + this.getNumOutputs() * this.fBufferSize * this.gSampleSize;
             const HEAP = this.fInstance.memory.buffer;
@@ -722,6 +744,7 @@ var Faust;
                 for (let chan = 0; chan < this.getNumOutputs(); chan++) {
                     HEAP32[(this.fAudioOutputs >> 2) + chan] = audio_outputs_ptr + this.fBufferSize * this.gSampleSize * chan;
                     HEAP32[(this.fAudioMixing >> 2) + chan] = audio_mixing_ptr + this.fBufferSize * this.gSampleSize * chan;
+                    HEAP32[(this.fAudioMixingHalf >> 2) + chan] = audio_mixing_ptr + this.fBufferSize * this.gSampleSize * chan + this.fBufferSize / 2 * this.gSampleSize;
                 }
                 const dspOutChans = HEAP32.subarray(this.fAudioOutputs >> 2, (this.fAudioOutputs + this.getNumOutputs() * this.gPtrSize) >> 2);
                 for (let chan = 0; chan < this.getNumOutputs(); chan++) {
@@ -736,37 +759,39 @@ var Faust;
             str += "this.fAudioInputs: " + this.fAudioInputs;
             str += "this.fAudioOutputs: " + this.fAudioOutputs;
             str += "this.fAudioMixing: " + this.fAudioMixing;
+            str += "this.fAudioMixingHalf: " + this.fAudioMixingHalf;
             return str;
         }
-        allocVoice(voice) {
+        allocVoice(voice, type) {
             this.fVoiceTable[voice].fDate++;
-            this.fVoiceTable[voice].fNote = DspVoice.kActiveVoice;
+            this.fVoiceTable[voice].fCurNote = type;
             return voice;
         }
         getPlayingVoice(pitch) {
-            let playing_voice = DspVoice.kNoVoice;
+            let voice_playing = DspVoice.kNoVoice;
             let oldest_date_playing = Number.MAX_VALUE;
             for (let voice = 0; voice < this.fInstance.voices; voice++) {
-                if (this.fVoiceTable[voice].fNote === pitch) {
+                if (this.fVoiceTable[voice].fCurNote === pitch) {
                     if (this.fVoiceTable[voice].fDate < oldest_date_playing) {
                         oldest_date_playing = this.fVoiceTable[voice].fDate;
-                        playing_voice = voice;
+                        voice_playing = voice;
                     }
                 }
             }
-            return playing_voice;
+            return voice_playing;
         }
         getFreeVoice() {
             for (let voice = 0; voice < this.fInstance.voices; voice++) {
-                if (this.fVoiceTable[voice].fNote === DspVoice.kFreeVoice)
-                    return this.allocVoice(voice);
+                if (this.fVoiceTable[voice].fCurNote === DspVoice.kFreeVoice) {
+                    return this.allocVoice(voice, DspVoice.kActiveVoice);
+                }
             }
             let voice_release = DspVoice.kNoVoice;
             let voice_playing = DspVoice.kNoVoice;
             let oldest_date_release = Number.MAX_VALUE;
             let oldest_date_playing = Number.MAX_VALUE;
             for (let voice = 0; voice < this.fInstance.voices; voice++) {
-                if (this.fVoiceTable[voice].fNote === DspVoice.kReleaseVoice) {
+                if (this.fVoiceTable[voice].fCurNote === DspVoice.kReleaseVoice) {
                     if (this.fVoiceTable[voice].fDate < oldest_date_release) {
                         oldest_date_release = this.fVoiceTable[voice].fDate;
                         voice_release = voice;
@@ -779,17 +804,19 @@ var Faust;
             }
             if (oldest_date_release !== Number.MAX_VALUE) {
                 console.log(`Steal release voice : voice_date = ${this.fVoiceTable[voice_release].fDate} voice = ${voice_release}`);
-                return this.allocVoice(voice_release);
+                return this.allocVoice(voice_release, DspVoice.kLegatoVoice);
             }
             if (oldest_date_playing !== Number.MAX_VALUE) {
                 console.log(`Steal playing voice : voice_date = ${this.fVoiceTable[voice_playing].fDate} voice = ${voice_playing}`);
-                return this.allocVoice(voice_playing);
+                return this.allocVoice(voice_playing, DspVoice.kLegatoVoice);
             }
             return DspVoice.kNoVoice;
         }
         compute(input, output) {
             if (this.fDestroyed)
                 return false;
+            if (!this.fProcessing)
+                return true;
             if (this.getNumInputs() > 0 && (!input || !input[0] || input[0].length === 0)) {
                 return true;
             }
@@ -806,12 +833,17 @@ var Faust;
                 this.fComputeHandler(this.fBufferSize);
             this.fInstance.mixer_api.clearOutput(this.fBufferSize, this.getNumOutputs(), this.fAudioOutputs);
             this.fVoiceTable.forEach(voice => {
-                if (voice.fNote !== DspVoice.kFreeVoice) {
+                if (voice.fCurNote === DspVoice.kLegatoVoice) {
+                    voice.computeLegato(this.fBufferSize, this.fAudioInputs, this.fAudioMixing, this.fAudioMixingHalf);
+                    this.fInstance.mixer_api.fadeOut(this.fBufferSize / 2, this.getNumOutputs(), this.fAudioMixing);
+                    voice.fLevel = this.fInstance.mixer_api.mixCheckVoice(this.fBufferSize, this.getNumOutputs(), this.fAudioMixing, this.fAudioOutputs);
+                }
+                else if (voice.fCurNote !== DspVoice.kFreeVoice) {
                     voice.compute(this.fBufferSize, this.fAudioInputs, this.fAudioMixing);
-                    voice.fLevel = this.fInstance.mixer_api.mixVoice(this.fBufferSize, this.getNumOutputs(), this.fAudioMixing, this.fAudioOutputs);
+                    voice.fLevel = this.fInstance.mixer_api.mixCheckVoice(this.fBufferSize, this.getNumOutputs(), this.fAudioMixing, this.fAudioOutputs);
                     voice.fRelease -= this.fBufferSize;
-                    if ((voice.fNote == DspVoice.kReleaseVoice) && ((voice.fLevel < DspVoice.VOICE_STOP_LEVEL) && (voice.fRelease < 0))) {
-                        voice.fNote = DspVoice.kFreeVoice;
+                    if ((voice.fCurNote == DspVoice.kReleaseVoice) && ((voice.fLevel < DspVoice.VOICE_STOP_LEVEL) && (voice.fRelease < 0))) {
+                        voice.fCurNote = DspVoice.kFreeVoice;
                     }
                 }
             });
@@ -934,7 +966,7 @@ var Faust;
         }
         keyOn(channel, pitch, velocity) {
             const voice = this.getFreeVoice();
-            this.fVoiceTable[voice].keyOn(pitch, velocity);
+            this.fVoiceTable[voice].keyOn(pitch, velocity, this.fVoiceTable[voice].fCurNote == DspVoice.kLegatoVoice);
         }
         keyOff(channel, pitch, velocity) {
             const voice = this.getPlayingVoice(pitch);
@@ -1062,6 +1094,12 @@ var Faust;
         getJSON() { return this.fJSON; }
         getUI() { return this.fJSONDsp.ui; }
         getDescriptors() { return this.fDescriptor; }
+        start() {
+            this.port.postMessage({ type: "start" });
+        }
+        stop() {
+            this.port.postMessage({ type: "stop" });
+        }
         destroy() {
             this.port.postMessage({ type: "destroy" });
             this.port.close();
@@ -1207,6 +1245,14 @@ var Faust;
                         }
                         break;
                     }
+                    case "start": {
+                        this.fDSPCode.start();
+                        break;
+                    }
+                    case "stop": {
+                        this.fDSPCode.stop();
+                        break;
+                    }
                     case "destroy": {
                         this.port.close();
                         this.fDSPCode.destroy();
@@ -1328,6 +1374,8 @@ var Faust;
             node.getJSON = () => { return this.fDSPCode.getJSON(); };
             node.getDescriptors = () => { return this.fDSPCode.getDescriptors(); };
             node.getUI = () => { return this.fDSPCode.getUI(); };
+            node.start = () => { this.fDSPCode.start(); };
+            node.stop = () => { this.fDSPCode.stop(); };
             node.destroy = () => { this.fDSPCode.destroy(); };
         }
     }
@@ -1394,12 +1442,14 @@ var Faust;
         }
         plot(size) {
             const plotted = new Array(this.fDSPCode.getNumOutputs()).fill(null).map(() => new Float32Array(size));
+            this.fDSPCode.start();
             for (let frame = 0; frame < size; frame += this.fBufferSize) {
                 this.fDSPCode.compute(this.fInputs, this.fOutputs);
                 for (let chan = 0; chan < plotted.length; chan++) {
                     plotted[chan].set(size - frame > this.fBufferSize ? this.fOutputs[chan] : this.fOutputs[chan].subarray(0, size - frame), frame);
                 }
             }
+            this.fDSPCode.stop();
             return plotted;
         }
     }
@@ -1461,6 +1511,7 @@ var Faust;
                         }
                         catch (e) {
                             console.error("=> exception raised while running createMonoNode: " + e);
+                            console.error("=> check that your page is served using https." + e);
                             return null;
                         }
                     }
@@ -1564,22 +1615,79 @@ var Faust;
 })(Faust || (Faust = {}));
 var Faust;
 (function (Faust) {
-    function compileAudioNode(audioCtx, module, dsp_code, effect_code, voices, is_double) {
+    function compileAudioNode(context, module, dsp_code, effect_code, voices, is_double) {
         let sp = typeof (window.AudioWorkletNode) == "undefined";
         let libfaust = Faust.createLibFaust(module);
         if (libfaust) {
             let compiler = Faust.createCompiler(libfaust);
             const argv = (is_double) ? "-double -ftz 2" : "-ftz 2";
             if (voices === 0) {
-                return Faust.createMonoFactory().compileNode(audioCtx, "FaustDSP", compiler, dsp_code, argv, sp, 0);
+                return Faust.createMonoFactory().compileNode(context, "FaustDSP", compiler, dsp_code, argv, sp, 0);
             }
             else {
-                return Faust.createPolyFactory().compileNode(audioCtx, "FaustDSP", compiler, dsp_code, effect_code, argv, voices, sp, 0);
+                return Faust.createPolyFactory().compileNode(context, "FaustDSP", compiler, dsp_code, effect_code, argv, voices, sp, 0);
             }
         }
-        return new Promise(() => { return null; });
+        else {
+            return new Promise(() => { return null; });
+        }
     }
     Faust.compileAudioNode = compileAudioNode;
+    function compileMonoFactory(module, dsp_code, is_double) {
+        let sp = typeof (window.AudioWorkletNode) == "undefined";
+        let libfaust = Faust.createLibFaust(module);
+        if (libfaust) {
+            let compiler = Faust.createCompiler(libfaust);
+            const args = (is_double) ? "-double -ftz 2" : "-ftz 2";
+            return compiler.createMonoDSPFactory("FaustDSP", dsp_code, args);
+        }
+        else {
+            return new Promise(() => { return null; });
+        }
+    }
+    Faust.compileMonoFactory = compileMonoFactory;
+    function compilePolyFactory(module, dsp_code, effect_code, is_double) {
+        let sp = typeof (window.AudioWorkletNode) == "undefined";
+        let libfaust = Faust.createLibFaust(module);
+        let null_res = new Promise(() => { return null; });
+        if (libfaust) {
+            let compiler = Faust.createCompiler(libfaust);
+            const args = (is_double) ? "-double -ftz 2" : "-ftz 2";
+            return [
+                compiler.createPolyDSPFactory("FaustDSP", dsp_code, args),
+                (effect_code) ? compiler.createPolyDSPFactory("FaustDSP", effect_code, args) : null_res
+            ];
+        }
+        else {
+            return [null_res, null_res];
+        }
+    }
+    Faust.compilePolyFactory = compilePolyFactory;
+    function createMonoAudioNode(context, wasm_path, json_path, buffer_size) {
+        return __awaiter(this, void 0, void 0, function* () {
+            let sp = typeof (window.AudioWorkletNode) == "undefined";
+            const factory = yield Faust.createGenerator().loadDSPFactory(wasm_path, json_path);
+            return (factory) ? Faust.createMonoFactory().createNode(context, "FaustDSP", factory, sp, buffer_size) : null;
+        });
+    }
+    Faust.createMonoAudioNode = createMonoAudioNode;
+    function createPolyAudioNode(context, voice_path, voice_json_path, effect_path, effect_json_path, mixer_path, voices, buffer_size) {
+        return __awaiter(this, void 0, void 0, function* () {
+            {
+                let sp = typeof (window.AudioWorkletNode) == "undefined";
+                const gen = Faust.createGenerator();
+                const mixer_module = yield gen.loadDSPMixer(mixer_path);
+                if (!mixer_module)
+                    return null;
+                const voice_factory = yield gen.loadDSPFactory(voice_path, voice_json_path);
+                if (!voice_factory)
+                    return null;
+                const effect_factory = (effect_path && effect_json_path) ? yield gen.loadDSPFactory(effect_path, effect_json_path) : null;
+                return Faust.createPolyFactory().createNode(context, "FaustDSP", voice_factory, mixer_module, voices, sp, ((effect_factory) ? effect_factory : undefined), buffer_size);
+            }
+        });
+    }
+    Faust.createPolyAudioNode = createPolyAudioNode;
 })(Faust || (Faust = {}));
 var Faust;
 (function (Faust) {

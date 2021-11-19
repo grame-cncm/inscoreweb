@@ -61,7 +61,6 @@ var AIOScanner = /** @class */ (function () {
                     AIOScanner.unlockAudioContext(AIOScanner.fAudioContext);
                 }
             };
-            // AIOScanner.unlockAudioContext(AIOScanner.fAudioContext);
         }
     };
     AIOScanner.scan = function (address) {
@@ -111,6 +110,32 @@ var AIOScanner = /** @class */ (function () {
     AIOScanner.fAudioContext = null;
     AIOScanner.fUnlockEvents = ["touchstart", "touchend", "mousedown", "keydown"];
     return AIOScanner;
+}());
+///<reference path="AIOScanner.ts"/>
+var AudioRouting = /** @class */ (function () {
+    // depending on the channels and the number of inputs / outputs
+    // encapsulates an audio node in a splitter and a merger 
+    // the merger is connected to the node input and the splitter to the node output
+    function AudioRouting(node, chans, caller) {
+        this.fSplitter = null;
+        this.fMerger = null;
+        this.fAudioNode = null;
+        this.fAudioNode = node;
+        if (chans > 1) {
+            if (node.numberOfOutputs) {
+                this.fSplitter = AIOScanner.fAudioContext.createChannelSplitter(chans);
+                node.connect(this.fSplitter);
+            }
+            if (node.numberOfInputs) {
+                this.fMerger = AIOScanner.fAudioContext.createChannelMerger(chans);
+                this.fMerger.connect(node);
+            }
+        }
+        // console.log (caller, "create AudioRouting with", chans, "channels", "i/o", node.numberOfInputs, node.numberOfOutputs )
+    }
+    AudioRouting.prototype.getSplitter = function () { return this.fSplitter ? this.fSplitter : this.fAudioNode; };
+    AudioRouting.prototype.getMerger = function () { return this.fMerger ? this.fMerger : this.fAudioNode; };
+    return AudioRouting;
 }());
 ///<reference path="lib/inscore.d.ts"/>
 ///<reference path="lib/libINScore.d.ts"/>
@@ -623,21 +648,26 @@ var AudioTools = /** @class */ (function () {
     AudioTools.updateConnections = function (obj, view) {
         var cnx = obj.getAudioInfos();
         // console.log ("AudioTools: updateConnections connect: " + obj.getOSCAddress() + " " + cnx.connect.size() + " disconnect: " + cnx.disconnect.size())
-        AudioTools.doit(view, cnx.connect, AudioTools.connectSrcDest, "connect");
-        AudioTools.doit(view, cnx.disconnect, AudioTools.disconnectSrcDest, "disconnect");
+        AudioTools.doit(view, obj, cnx.connect, AudioTools.connectSrcDest, "connect");
+        AudioTools.doit(view, obj, cnx.disconnect, AudioTools.disconnectSrcDest, "disconnect");
     };
     AudioTools.connectSrcDest = function (src, dest, srcchan, destchan) {
         if (src && dest) {
             try {
-                // if (srcchan) {
-                // console.log ("AudioTools:connectSrcDest src: " + src.numberOfInputs + " " + src.numberOfOutputs + ":" + src.channelCount  + " mode: " + src.channelCountMode + " - dest: " + dest.numberOfInputs + " " + dest.numberOfOutputs + " chans: " + dest.channelCount + " mode: " + dest.channelCountMode);
-                // console.log( "src.connect " + dest + "  " + srcchan + ", " + destchan);
-                // console.log(dest);
-                // console.log(src);
-                src.connect(dest, srcchan, destchan);
-                // }
-                // else
-                //     src.connect(dest);
+                if (srcchan || destchan) {
+                    var splitter = src.getSplitter();
+                    var merger = dest.getMerger();
+                    if (srcchan) {
+                        if (destchan)
+                            splitter.connect(merger, srcchan - 1, destchan - 1);
+                        else
+                            splitter.connect(dest.getAudioNode(), srcchan - 1);
+                    }
+                    else
+                        src.getAudioNode().connect(merger, srcchan, destchan - 1);
+                }
+                else
+                    src.getAudioNode().connect(dest.getAudioNode());
             }
             catch (error) {
                 console.log("Exception while calling AudioNode connect: " + error);
@@ -650,20 +680,30 @@ var AudioTools = /** @class */ (function () {
     AudioTools.disconnectSrcDest = function (src, dest, srcchan, destchan) {
         if (src && dest) {
             try {
-                // if (srcchan)
-                src.disconnect(dest, srcchan, destchan);
-                // else
-                //     src.disconnect(dest);
+                if (srcchan || destchan) {
+                    var splitter = src.getSplitter();
+                    var merger = dest.getMerger();
+                    if (srcchan) {
+                        if (destchan)
+                            splitter.disconnect(merger, srcchan - 1, destchan - 1);
+                        else
+                            splitter.disconnect(dest.getAudioNode(), srcchan - 1);
+                    }
+                    else
+                        src.getAudioNode().disconnect(merger, srcchan, destchan - 1);
+                }
+                else
+                    src.getAudioNode().disconnect(dest.getAudioNode());
             }
             catch (error) {
-                console.log("Exception while calling AudioNode disconnect: " + error);
+                console.log("Exception while calling AudioNode disconnect (", srcchan, destchan, ")", error);
             }
             return true;
         }
         console.log("AudioTools error: trying to disconnect null AudioNode (" + src + " " + dest + ")");
         return false;
     };
-    AudioTools.doit = function (view, list, cnx, op) {
+    AudioTools.doit = function (view, obj, list, cnx, op) {
         var n = list.size();
         for (var i = 0; i < n; i++) {
             var cdesc = list.get(i);
@@ -672,15 +712,13 @@ var AudioTools = /** @class */ (function () {
                 var dest = tmp.toAudioObject();
                 var src = view.toAudioObject();
                 if (src && dest) {
-                    cnx(src.getAudioNode(), dest.getAudioNode(), cdesc.from, cdesc.to);
+                    cnx(src, dest, cdesc.from, cdesc.to);
                 }
-                else {
+                else
                     console.log("AudioTools " + op + " error: not an audio object: " + view + " -> " + tmp);
-                }
             }
-            else {
+            else
                 console.log("AudioTools error: incorrect view received by " + op + " method: " + cdesc.objid);
-            }
         }
     };
     return AudioTools;
@@ -862,8 +900,10 @@ var TMedia = /** @class */ (function (_super) {
         _this.fReady = false;
         _this.fListen = false;
         _this.fAudioNode = null;
+        _this.fRouter = null;
         _this.fAudioNode = AIOScanner.fAudioContext.createMediaElementSource(elt);
         _this.fAudioNode.connect(AIOScanner.fAudioContext.destination);
+        _this.fRouter = new AudioRouting(_this.fAudioNode, _this.fAudioNode.channelCount, _this.toString());
         return _this;
     }
     TMedia.prototype.addHandlers = function (elt, obj) {
@@ -879,7 +919,7 @@ var TMedia = /** @class */ (function (_super) {
     TMedia.prototype.ready = function (obj, elt) {
         if (!this.fReady) {
             obj.updateDuration(elt.duration * 1000);
-            obj.setAudioInOut(this.getNumInputs(), this.getNumOutputs());
+            obj.setAudioInOut(this.getNumInputs(), this.getNumChans());
             obj.ready();
             // the connect message is intended to sync the model with the existing connection
             inscore.postMessageStrStr(obj.getOSCAddress(), "connect", AIOScanner.kOutputName);
@@ -895,8 +935,11 @@ var TMedia = /** @class */ (function (_super) {
     };
     TMedia.prototype.toAudioObject = function () { return this; };
     TMedia.prototype.getNumInputs = function () { return 0; };
-    TMedia.prototype.getNumOutputs = function () { return this.fAudioNode ? this.fAudioNode.channelCount : 0; };
+    TMedia.prototype.getNumOutputs = function () { return this.fAudioNode ? this.fAudioNode.numberOfOutputs : 0; };
+    TMedia.prototype.getNumChans = function () { return this.fAudioNode ? this.fAudioNode.channelCount : 0; };
     TMedia.prototype.getAudioNode = function () { return this.fAudioNode; };
+    TMedia.prototype.getSplitter = function () { return this.fRouter.getSplitter(); };
+    TMedia.prototype.getMerger = function () { return this.fRouter.getMerger(); };
     return TMedia;
 }(JSAutoSize));
 ///<reference path="JSAutoSize.ts"/>
@@ -951,12 +994,17 @@ var JSAudioioView = /** @class */ (function (_super) {
     function JSAudioioView(parent) {
         var _this = _super.call(this, document.createElement('div'), parent) || this;
         _this.fAudioNode = null;
+        _this.fRouter = null;
         return _this;
     }
+    JSAudioioView.prototype.toString = function () { return "JSAudioioView"; };
     JSAudioioView.prototype.toAudioObject = function () { return this; };
-    JSAudioioView.prototype.getNumInputs = function () { return this.fAudioNode ? this.fAudioNode.channelCount : 0; };
-    JSAudioioView.prototype.getNumOutputs = function () { return this.fAudioNode ? this.fAudioNode.channelCount : 0; };
+    JSAudioioView.prototype.getNumInputs = function () { return this.fAudioNode ? this.fAudioNode.numberOfInputs : 0; };
+    JSAudioioView.prototype.getNumOutputs = function () { return this.fAudioNode ? this.fAudioNode.numberOfOutputs : 0; };
+    JSAudioioView.prototype.getNumChans = function () { return this.fAudioNode ? this.fAudioNode.channelCount : 0; };
     JSAudioioView.prototype.getAudioNode = function () { return this.fAudioNode; };
+    JSAudioioView.prototype.getSplitter = function () { return this.fRouter.getSplitter(); };
+    JSAudioioView.prototype.getMerger = function () { return this.fRouter.getMerger(); };
     JSAudioioView.prototype.clone = function (parent) {
         return new JSAudioioView(parent);
     };
@@ -968,16 +1016,12 @@ var JSAudioioView = /** @class */ (function (_super) {
         if (infos.inputs && infos.outputs) {
             console.log("Warning: JSAudioioView created with " + infos.inputs + " inputs and " + infos.outputs + " outputs.");
         }
-        if (infos.inputs) {
+        if (infos.inputs)
             this.fAudioNode = AIOScanner.fOutput;
-            if (this.getNumInputs() != infos.inputs)
-                console.log("JSAudioioView Warning: device has not the requested number of inputs: " + this.getNumInputs() + " instead of " + infos.inputs);
-        }
-        else if (infos.outputs) {
+        else if (infos.outputs)
             this.fAudioNode = AIOScanner.fInput;
-            if (this.getNumOutputs() != infos.outputs)
-                console.log("JSAudioioView Warning: device has not the requested number of outputs: " + this.getNumOutputs() + " instead of " + infos.outputs);
-        }
+        if (this.fAudioNode)
+            this.fRouter = new AudioRouting(this.fAudioNode, this.fAudioNode.channelCount, this.toString());
         return true;
     };
     JSAudioioView.prototype.updateSpecial = function (obj) {
@@ -1137,16 +1181,19 @@ var JSFaustView = /** @class */ (function (_super) {
         _this.fEffect = null;
         _this.fMixer = null;
         _this.fAudioNode = null;
+        _this.fRouter = null;
         _this.fVoices = 0;
         _this.fCompute = false;
         _this.fFaust = compiler;
         return _this;
-        // this.getElement().className = "inscore-svg";
     }
     JSFaustView.prototype.toAudioObject = function () { return this; };
-    JSFaustView.prototype.getNumInputs = function () { return this.fAudioNode ? this.fAudioNode.getNumInputs() : 0; };
-    JSFaustView.prototype.getNumOutputs = function () { return this.fAudioNode ? this.fAudioNode.getNumOutputs() : 0; };
+    JSFaustView.prototype.getNumInputs = function () { return this.fAudioNode ? this.fAudioNode.numberOfInputs : 0; };
+    JSFaustView.prototype.getNumOutputs = function () { return this.fAudioNode ? this.fAudioNode.numberOfOutputs : 0; };
+    JSFaustView.prototype.getNumChans = function () { return this.fAudioNode ? this.fAudioNode.getNumOutputs() : 0; };
     JSFaustView.prototype.getAudioNode = function () { return this.fAudioNode; };
+    JSFaustView.prototype.getSplitter = function () { return this.fRouter.getSplitter(); };
+    JSFaustView.prototype.getMerger = function () { return this.fRouter.getMerger(); };
     JSFaustView.prototype.clone = function (parent) { return new JSFaustView(parent, this.fFaust); };
     JSFaustView.prototype.toString = function () { return "JSFaustView"; };
     JSFaustView.prototype.osc2svgname = function (name) { return name.replace(/\//g, "_"); };
@@ -1157,6 +1204,7 @@ var JSFaustView = /** @class */ (function (_super) {
         if (this.fAudioNode) {
             this.fAudioNode.disconnect();
             this.fAudioNode = null;
+            this.fRouter = null;
         }
         _super.prototype.delete.call(this);
     };
@@ -1196,18 +1244,22 @@ var JSFaustView = /** @class */ (function (_super) {
             var compute = data.compute;
             if (compute != this.fCompute) {
                 this.fCompute = compute;
-                // if (compute) this.fAudioNode.start();
-                // else this.fAudioNode.stop();
-                // console.log ("JSFaustView.updateSpecific compute " + compute);
+                if (compute)
+                    this.fAudioNode.start();
+                else
+                    this.fAudioNode.stop();
             }
             var val = data.values;
             var n = val.size();
             for (var i = 0; i < n; i++) {
                 var v = val.get(i);
-                // console.log ("JSFaustView.updateSpecific setParamValue " + v.address + " " +v.value);
+                // console.log ("JSFaustView.updateSpecific setParamValue ", v.address, v.value);
                 this.fAudioNode.setParamValue(v.address, v.value);
-                //                if ((v.type == 0) && v.value)   // schedule the button off value
-                //                    setTimeout (() => { this.fAudioNode.setParamValue (v.address, 0); }, 100);
+                if (data.autoOff && (v.type == 0) && v.value) { // schedule the button off value
+                    var msg = inscore.newMessage();
+                    inscore.msgAddF(msg, 0);
+                    inscore.delayMessage(obj.getOSCAddress() + v.address, msg);
+                }
             }
             if (this.fVoices) {
                 var node = this.fAudioNode;
@@ -1302,10 +1354,12 @@ var JSFaustView = /** @class */ (function (_super) {
                             obj.ready();
                             return [2 /*return*/, JSFaustView.kFailed];
                         }
-                        obj.setAudioInOut(node.getNumInputs(), node.getNumOutputs());
+                        //console.log(this.toString(), "channels:", node.channelCount, this.getNumChans());
+                        this.fRouter = new AudioRouting(this.fAudioNode, this.getNumChans(), this.toString());
+                        obj.setAudioInOut(node.numberOfInputs ? node.channelCount : 0, node.numberOfOutputs ? node.channelCount : 0);
                         ui = node.getDescriptors();
                         ui.forEach(function (elt) {
-                            //  console.log ("JSFaustView.makeNode elt " + elt.type + " " + elt.label + " " + elt.address + " " + elt.init + " " + elt.min + " " + elt.max + " " + elt.step );
+                            // console.log ("JSFaustView.makeAudioNode elt " + elt.type + " " + elt.label + " " + elt.address + " " + elt.init + " " + elt.min + " " + elt.max + " " + elt.step );
                             if ((elt.type == "button") || (elt.type == "checkbox"))
                                 obj.setFaustUI(elt.type, elt.label, elt.address, 0, 0, 1, 1);
                             else
@@ -1314,7 +1368,6 @@ var JSFaustView = /** @class */ (function (_super) {
                         this.updateSpecific(obj);
                         bb = this.fSVG.getBBox();
                         this.updateObjectSize(obj, bb.width + bb.x, bb.height + bb.y);
-                        // INScore.objects().del (obj);
                         obj.ready();
                         return [2 /*return*/, JSFaustView.kSuccess];
                 }
@@ -1348,6 +1401,7 @@ var JSFaustView = /** @class */ (function (_super) {
                     case 2:
                         result = _a.sent();
                         JSFaustView.fCompilerLock = false;
+                        setTimeout(function () { obj.event("ready"); }, 10);
                         return [2 /*return*/, result];
                 }
             });
@@ -1496,7 +1550,7 @@ var JSFaustwView = /** @class */ (function (_super) {
     };
     return JSFaustwView;
 }(JSFaustView));
-///<reference path="libGUIDOEngine.d.ts"/>
+///<reference types="@grame/guidolib"/>
 //----------------------------------------------------------------------------
 // GUIDOEngine interface
 //----------------------------------------------------------------------------
@@ -1505,27 +1559,21 @@ var GuidoEngine = /** @class */ (function () {
     }
     GuidoEngine.prototype.initialise = function () {
         return __awaiter(this, void 0, void 0, function () {
-            var module;
             var _this = this;
             return __generator(this, function (_a) {
-                module = GuidoModule();
                 return [2 /*return*/, new Promise(function (success, failure) {
-                        module['onRuntimeInitialized'] = function () {
-                            _this.moduleInit(module);
+                        GuidoModule().then(function (module) {
+                            _this.fEngine = new module.GuidoEngineAdapter();
+                            _this.fScoreMap = new module.GUIDOScoreMap();
+                            _this.fPianoRoll = new module.GUIDOPianoRollAdapter();
+                            _this.fFactory = new module.GUIDOFactoryAdapter();
+                            _this.fSPR = new module.GUIDOReducedProportionalAdapter();
+                            _this.fEngine.init();
                             success(_this);
-                        };
+                        });
                     })];
             });
         });
-    };
-    //------------------------------------------------------------------------
-    // async initialization
-    GuidoEngine.prototype.moduleInit = function (module) {
-        this.fEngine = new module.GuidoEngineAdapter();
-        this.fScoreMap = new module.GUIDOScoreMap();
-        this.fPianoRoll = new module.GUIDOPianoRollAdapter();
-        this.fFactory = new module.GUIDOFactoryAdapter();
-        this.fEngine.init();
     };
     //------------------------------------------------------------------------
     // Guido Engine interface
@@ -1579,9 +1627,9 @@ var GuidoEngine = /** @class */ (function () {
     GuidoEngine.prototype.stream2AR = function (p, stream) { return this.fEngine.stream2AR(p, stream); };
     GuidoEngine.prototype.writeStream = function (s, str) { return this.fEngine.writeStream(s, str); };
     GuidoEngine.prototype.resetStream = function (s) { return this.fEngine.resetStream(s); };
-    GuidoEngine.prototype.getParsingTime = function () { return this.fEngine.getParsingTime(); };
-    GuidoEngine.prototype.getAR2GRTime = function () { return this.fEngine.getAR2GRTime(); };
-    GuidoEngine.prototype.getOnDrawTime = function () { return this.fEngine.getOnDrawTime(); };
+    GuidoEngine.prototype.getParsingTime = function (ar) { return this.fEngine.getParsingTime(ar); };
+    GuidoEngine.prototype.getAR2GRTime = function (gr) { return this.fEngine.getAR2GRTime(gr); };
+    GuidoEngine.prototype.getOnDrawTime = function (gr) { return this.fEngine.getOnDrawTime(gr); };
     //------------------------------------------------------------------------
     // Guido mappings interface
     GuidoEngine.prototype.getPageMap = function (gr, page, w, h) { return this.fScoreMap.getPageMap(gr, page, w, h); };
@@ -1594,6 +1642,7 @@ var GuidoEngine = /** @class */ (function () {
     GuidoEngine.prototype.getPianoRollMap = function (pr, width, height) { return this.fScoreMap.getPianoRollMap(pr, width, height); };
     //------------------------------------------------------------------------
     // Guido piano roll interface
+    GuidoEngine.prototype.pianoRoll = function () { return this.fPianoRoll; };
     GuidoEngine.prototype.ar2PianoRoll = function (type, ar) { return this.fPianoRoll.ar2PianoRoll(type, ar); };
     GuidoEngine.prototype.destroyPianoRoll = function (pr) { return this.fPianoRoll.destroyPianoRoll(pr); };
     GuidoEngine.prototype.prSetLimits = function (pr, limits) { return this.fPianoRoll.setLimits(pr, limits); };
@@ -1609,6 +1658,10 @@ var GuidoEngine = /** @class */ (function () {
     GuidoEngine.prototype.prGetMap = function (pr, width, height) { return this.fPianoRoll.getMap(pr, width, height); };
     GuidoEngine.prototype.prSvgExport = function (pr, width, height) { return this.fPianoRoll.svgExport(pr, width, height); };
     GuidoEngine.prototype.prJsExport = function (pr, width, height) { return this.fPianoRoll.javascriptExport(pr, width, height); };
+    //------------------------------------------------------------------------
+    // Reduced Proportional representation
+    // no relay for the interface
+    GuidoEngine.prototype.reducedProp = function () { return this.fSPR; };
     //------------------------------------------------------------------------
     // Guido factory interface
     GuidoEngine.prototype.openMusic = function () { return this.fFactory.openMusic(); };
@@ -1741,7 +1794,7 @@ function scanPlatform() {
     AndroidOS = (os.indexOf('Android') >= 0);
 }
 ///<reference path="JSSVGBase.ts"/>
-///<reference path="lib/guidoengine.ts"/>
+///<reference path="guidoengine.ts"/>
 ///<reference path="navigator.ts"/>
 var JSGMNView = /** @class */ (function (_super) {
     __extends(JSGMNView, _super);
@@ -2798,8 +2851,8 @@ var TSyncManager = /** @class */ (function () {
     };
     return TSyncManager;
 }());
-///<reference path="lib/guidoengine.ts"/>
 ///<reference path="lib/libmusicxml.ts"/>
+///<reference path="guidoengine.ts"/>
 ///<reference path="faust.ts"/>
 //----------------------------------------------------------------------------
 var libraries = /** @class */ (function () {
