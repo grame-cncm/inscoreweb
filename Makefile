@@ -79,7 +79,7 @@ help:
 ts : $(TSLIB) $(DIST)/inscoreEditor.js
 
 $(DIST)/inscoreEditor.js : $(TSFILES)
-	cd $(TSFOLDER) && tsc
+	cd $(TSFOLDER) && tsc || rm $(DIST)/inscoreEditor.js
 
 deplibs: TMPNAME := __tmp__
 deplibs:
