@@ -2,6 +2,11 @@
 # INScore Web Editor change log
 
 
+### Version 1.1.0 [Nov. 19 2021]
+
+- update libraries
+- save as html support faust objects as precompiled wasm files.
+
 ### Version 1.0.1 beta [May 6 2021]
 
 - full screen mode re-designed. 
